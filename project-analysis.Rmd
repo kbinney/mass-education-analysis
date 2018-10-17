@@ -54,7 +54,8 @@ mcas_data %>%
 ## School Graduation rates
 
 ```{r}
-grad_rates <- read_excel("final_project_data/accountability_data/gradrates.xlsx", skip = 1) %>% 
+grad_rates <- read_excel("final_project_data/accountability_data/gradrates.xlsx", skip = 1,
+                         col_types = c("text", "text", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric")) %>% 
   clean_names()
 
 grad_rates %>% 
