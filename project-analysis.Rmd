@@ -6,13 +6,13 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = 'hide')
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
 library(tidyverse)
 library(leaflet)
 library(rgdal)
 ```
 
-```{r}
+```{r, message = FALSE, results = 'hide'}
 colleges <- readOGR("final_project_data/colleges/COLLEGES_PT.shp")
 schools <- readOGR("final_project_data/schools/SCHOOLS_PT.shp")
 
@@ -22,18 +22,35 @@ colleges_transformed <- spTransform(colleges, CRS("+proj=longlat +ellps=GRS80"))
 
 ```
 
+## School locations
 ```{r}
-leaflet(schools_transformed) %>% 
-  addTiles() %>% 
-  addCircleMarkers(radius = 2,
-                   opacity = 0.2)
 
+school_types <- levels(schools_transformed@data$TYPE_DESC)
+
+pal <- colorFactor(palette = "Accent",
+                   levels = school_types)
+
+leaflet(schools_transformed) %>% 
+  addProviderTiles("CartoDB") %>% 
+  addCircleMarkers(radius = 2,
+                   opacity = 1,
+                   label = ~NAME,
+                   color = ~pal(TYPE_DESC)) %>% 
+  addLegend(position = "bottomright",
+            pal = pal, 
+            values = school_types)
+
+```
+
+
+## College locations
+```{r}
 colleges_transformed %>% 
     leaflet() %>% 
-    addProviderTiles(provider = "Esri") %>% 
+    addProviderTiles("CartoDB") %>% 
     addMarkers()
 
   
 ```
 
-
+## School District Boundaries
