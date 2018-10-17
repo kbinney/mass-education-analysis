@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = 'hide')
 library(tidyverse)
 library(leaflet)
 library(rgdal)
@@ -25,7 +25,8 @@ colleges_transformed <- spTransform(colleges, CRS("+proj=longlat +ellps=GRS80"))
 ```{r}
 leaflet(schools_transformed) %>% 
   addTiles() %>% 
-  addMarkers()
+  addCircleMarkers(radius = 2,
+                   opacity = 0.2)
 
 colleges_transformed %>% 
     leaflet() %>% 
@@ -35,7 +36,4 @@ colleges_transformed %>%
   
 ```
 
-```{r}
-my_data <- readOGR("final_project_data/schools/SCHOOLS_PT.shp")
-```
 
