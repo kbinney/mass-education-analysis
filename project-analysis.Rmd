@@ -10,16 +10,35 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
 library(tidyverse)
 library(leaflet)
 library(rgdal)
+library(readxl)
+library(janitor)
 ```
 
 ```{r, message = FALSE, results = 'hide'}
 colleges <- readOGR("final_project_data/colleges/COLLEGES_PT.shp")
 schools <- readOGR("final_project_data/schools/SCHOOLS_PT.shp")
+districts <- readOGR("final_project_data/schooldistricts/SCHOOLDISTRICTS_POLY.shp")
 
 # Have to convert shapefile to R - I have no idea why
 schools_transformed <- spTransform(schools, CRS("+proj=longlat +ellps=GRS80"))
 colleges_transformed <- spTransform(colleges, CRS("+proj=longlat +ellps=GRS80"))
+districts_transformed <- spTransform(districts, CRS("+proj=longlat +ellps=GRS80"))
 
+# massachusetts borders
+bounding_box <- c(-74.1054,41.1389,-69.6605,43.0038)
+
+```
+## Final Project
+In my final project, I plan to investigate education in Massachusetts. I have collected data from the Massachusetts Department of Education on MCAS scores and districts. I have a lot of data, but am not yet sure what will be most useful. For now, I've looked at summary statistics of MCAS and also mapped schools, school districts, and colleges in Massachusetts. Ultimately, I hope to have an interactive map that lets users examine school quality in their area. Users could use the map to select regions and then see reports of selected schools. Alternatively, I would try to compile the quality and location data to visually depict educational opportunities on a map (like we saw briefly with a speaker showing regions needing hospitals in Argentina). 
+
+The data can generally be linked via district / school code. I included in my repo only the files I have used so far, but locally have significantly more files I have not yet examined including things like enrollment statistics, school profiles, demographics and more. 
+
+## MCAS (massachusetts state testing) Data Summary
+
+```{r}
+mcas_data <- read_excel("final_project_data/mcas.xlsx", skip = 1) %>% 
+  clean_names() %>% 
+  mutate(subject = parse_factor(subject, levels = NULL))
 ```
 
 ## School locations
@@ -32,13 +51,21 @@ pal <- colorFactor(palette = "Accent",
 
 leaflet(schools_transformed) %>% 
   addProviderTiles("CartoDB") %>% 
+    # draw on districts
+  addPolygons(data = districts_transformed,
+              opacity = 0.1, fill = FALSE) %>% 
+  # put school locations on top
   addCircleMarkers(radius = 3,
                    opacity = 1,
                    label = ~NAME,
                    color = ~pal(TYPE_DESC)) %>% 
   addLegend(position = "bottomright",
             pal = pal, 
-            values = school_types)
+            values = school_types) %>% 
+  setMaxBounds(lng1 = bounding_box[1],
+               lng2 = bounding_box[3],
+               lat1 = bounding_box[2],
+               lat2 = bounding_box[4])
 
 ```
 
@@ -47,7 +74,7 @@ leaflet(schools_transformed) %>%
 ```{r}
 college_types = levels(colleges_transformed@data$NCES_TYPE)
 college_pal <- colorFactor(palette = "Accent", levels = college_types)
-
+bounding_box <- c(-74.1054,41.1389,-69.6605,43.0038)
 colleges_transformed %>% 
     leaflet() %>% 
     addProviderTiles("CartoDB") %>% 
@@ -55,10 +82,12 @@ colleges_transformed %>%
                opacity = 1,
                label = ~COLLEGE,
                color = ~college_pal(NCES_TYPE)) %>% 
-  addLegend(position = "bottomright",
+  addLegend(position = "bottomleft",
             pal = college_pal,
-            values = college_types)
+            values = college_types) %>% 
+  setMaxBounds(lng1 = bounding_box[1],
+               lng2 = bounding_box[3],
+               lat1 = bounding_box[2],
+               lat2 = bounding_box[4])
   
 ```
-
-## School District Boundaries
