@@ -1,0 +1,41 @@
+---
+title: "Massachussetts Education"
+author: "Katherine Binney"
+date: "10/16/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(leaflet)
+library(rgdal)
+```
+
+```{r}
+colleges <- readOGR("final_project_data/colleges/COLLEGES_PT.shp")
+schools <- readOGR("final_project_data/schools/SCHOOLS_PT.shp")
+
+# Have to convert shapefile to R - I have no idea why
+schools_transformed <- spTransform(schools, CRS("+proj=longlat +ellps=GRS80"))
+colleges_transformed <- spTransform(colleges, CRS("+proj=longlat +ellps=GRS80"))
+
+```
+
+```{r}
+leaflet(schools_transformed) %>% 
+  addTiles() %>% 
+  addMarkers()
+
+colleges_transformed %>% 
+    leaflet() %>% 
+    addProviderTiles(provider = "Esri") %>% 
+    addMarkers()
+
+  
+```
+
+```{r}
+my_data <- readOGR("final_project_data/schools/SCHOOLS_PT.shp")
+```
+
