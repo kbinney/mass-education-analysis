@@ -36,9 +36,29 @@ The data can generally be linked via district / school code. I included in my re
 ## MCAS (massachusetts state testing) Data Summary
 
 ```{r}
-mcas_data <- read_excel("final_project_data/mcas.xlsx", skip = 1) %>% 
+mcas_data <- read_excel("final_project_data/MCAS_data/2018-3-NextGenMCAS.xlsx", skip = 1) %>% 
   clean_names() %>% 
   mutate(subject = parse_factor(subject, levels = NULL))
+
+mcas_data %>% 
+  ggplot(aes(x = m_e_percent, color = subject)) +
+  geom_histogram(position = "identity", bins = 8, fill = "white", alpha = 0.5) +
+  xlab("Percent of students meeting or exceeding expectations") + 
+  ylab("Number of districts") +
+  ggtitle("Massachusetts 3rd Graders are Better at Reading",
+          subtitle = "Slighly more third graders meet or exceed expectations on the English Language Arts portion of statewide testing compared")
+
+mcas_data %>% 
+  summary()
+```
+## School Graduation rates
+
+```{r}
+grad_rates <- read_excel("final_project_data/accountability_data/gradrates.xlsx", skip = 1) %>% 
+  clean_names()
+
+grad_rates %>% 
+  summary()
 ```
 
 ## School locations
