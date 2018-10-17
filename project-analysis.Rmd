@@ -32,7 +32,7 @@ pal <- colorFactor(palette = "Accent",
 
 leaflet(schools_transformed) %>% 
   addProviderTiles("CartoDB") %>% 
-  addCircleMarkers(radius = 2,
+  addCircleMarkers(radius = 3,
                    opacity = 1,
                    label = ~NAME,
                    color = ~pal(TYPE_DESC)) %>% 
@@ -45,11 +45,19 @@ leaflet(schools_transformed) %>%
 
 ## College locations
 ```{r}
+college_types = levels(colleges_transformed@data$NCES_TYPE)
+college_pal <- colorFactor(palette = "Accent", levels = college_types)
+
 colleges_transformed %>% 
     leaflet() %>% 
     addProviderTiles("CartoDB") %>% 
-    addMarkers()
-
+    addCircles(radius = 4, 
+               opacity = 1,
+               label = ~COLLEGE,
+               color = ~college_pal(NCES_TYPE)) %>% 
+  addLegend(position = "bottomright",
+            pal = college_pal,
+            values = college_types)
   
 ```
 
