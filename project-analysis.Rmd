@@ -12,6 +12,7 @@ library(leaflet)
 library(rgdal)
 library(readxl)
 library(janitor)
+library(knitr)
 ```
 
 ```{r, message = FALSE, results = 'hide'}
@@ -49,8 +50,13 @@ mcas_data %>%
           subtitle = "Slighly more third graders meet or exceed expectations on the English Language Arts portion of statewide testing compared")
 
 mcas_data %>% 
-  summary()
+  summary() %>% 
+  kable()
 ```
+
+
+
+
 ## School Graduation rates
 
 ```{r}
@@ -59,8 +65,10 @@ grad_rates <- read_excel("final_project_data/accountability_data/gradrates.xlsx"
   clean_names()
 
 grad_rates %>% 
-  summary()
+  summary() %>% 
+  kable()
 ```
+
 
 ## School locations
 ```{r}
@@ -72,9 +80,9 @@ pal <- colorFactor(palette = "Accent",
 
 leaflet(schools_transformed) %>% 
   addProviderTiles("CartoDB") %>% 
-    # draw on districts
-  addPolygons(data = districts_transformed,
-              opacity = 0.1, fill = FALSE) %>% 
+    # draw on districts - This made html file too big for github to deal with nicely and would have been difficult to email so removing for now
+  #addPolygons(data = districts_transformed,
+              #opacity = 0.1, fill = FALSE) %>% 
   # put school locations on top
   addCircleMarkers(radius = 3,
                    opacity = 1,
@@ -89,6 +97,7 @@ leaflet(schools_transformed) %>%
                lat2 = bounding_box[4])
 
 ```
+
 
 
 ## College locations
