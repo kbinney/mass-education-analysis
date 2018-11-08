@@ -14,10 +14,11 @@ library(rgdal)
 library(readxl)
 library(janitor)
 library(knitr)
+library(shinythemes)
 
-colleges <- readOGR("../final_project_data/colleges/COLLEGES_PT.shp")
-schools <- readOGR("../final_project_data/schools/SCHOOLS_PT.shp")
-districts <- readOGR("../final_project_data/schooldistricts/SCHOOLDISTRICTS_POLY.shp")
+colleges <- readOGR("colleges/COLLEGES_PT.shp")
+schools <- readOGR("schools/SCHOOLS_PT.shp")
+districts <- readOGR("schooldistricts/SCHOOLDISTRICTS_POLY.shp")
 
 # Have to convert shapefile to R - I have no idea why
 schools_transformed <- spTransform(schools, CRS("+proj=longlat +ellps=GRS80"))
@@ -27,53 +28,59 @@ districts_transformed <- spTransform(districts, CRS("+proj=longlat +ellps=GRS80"
 # massachusetts borders
 bounding_box <- c(-74.1054,41.1389,-69.6605,43.0038)
 
-mcas_data_3 <- read_excel("../final_project_data/MCAS_data/2018-3-NextGenMCAS.xlsx", skip = 1) %>% 
+mcas_data_3 <- read_excel("MCAS_data/2018-3-NextGenMCAS.xlsx", skip = 1) %>% 
   clean_names() %>% 
   mutate(subject = parse_factor(subject, levels = NULL))
 
-mcas_data_4 <- read_excel("../final_project_data/MCAS_data/2018-4-NextGenMCAS.xlsx", skip = 1) %>% 
+mcas_data_4 <- read_excel("MCAS_data/2018-4-NextGenMCAS.xlsx", skip = 1) %>% 
   clean_names() %>% 
   mutate(subject = parse_factor(subject, levels = NULL))
 
-mcas_data_5 <- read_excel("../final_project_data/MCAS_data/2018-5-NextGenMCAS.xlsx", skip = 1) %>% 
+mcas_data_5 <- read_excel("MCAS_data/2018-5-NextGenMCAS.xlsx", skip = 1) %>% 
   clean_names() %>% 
   mutate(subject = parse_factor(subject, levels = NULL))
 
-mcas_data_6 <- read_excel("../final_project_data/MCAS_data/2018-6-NextGenMCAS.xlsx", skip = 1) %>% 
+mcas_data_6 <- read_excel("MCAS_data/2018-6-NextGenMCAS.xlsx", skip = 1) %>% 
   clean_names() %>% 
   mutate(subject = parse_factor(subject, levels = NULL))
 
-mcas_data_7 <- read_excel("../final_project_data/MCAS_data/2018-7-NextGenMCAS.xlsx", skip = 1) %>% 
+mcas_data_7 <- read_excel("MCAS_data/2018-7-NextGenMCAS.xlsx", skip = 1) %>% 
   clean_names() %>% 
   mutate(subject = parse_factor(subject, levels = NULL))
 
-mcas_data_8 <- read_excel("../final_project_data/MCAS_data/2018-8-NextGenMCAS.xlsx", skip = 1) %>% 
+mcas_data_8 <- read_excel("MCAS_data/2018-8-NextGenMCAS.xlsx", skip = 1) %>% 
   clean_names() %>% 
   mutate(subject = parse_factor(subject, levels = NULL))
 
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
-   
+   theme = shinytheme("superhero"),
    # Application title
-   titlePanel("Massachusetts Data"),
-   
+   titlePanel("Massachusetts School Data"),
    # Sidebar with a slider input for number of bins 
    sidebarLayout(
-     sidebarPanel(
-       selectInput("dataset", "Choose a grade:", 
-                   choices = c("third", "fourth",
-                               "fifth", "sixth",
-                               "seventh", "eighth"))
-       ),
-      selectInput("school", "Choose a school:")
-      
       # Show a plot of the generated distribution
-      mainPanel(
-         plotOutput("gradePlot"),
-         leafletOutput("mymap")
-      )
-  ))
+     mainPanel(
+       tabsetPanel(type = "tabs",
+                   tabPanel("Plot by Level", 
+                            sidebarPanel(
+                     selectInput("dataset", "Choose a grade:", 
+                                 choices = c("third", "fourth",
+                                             "fifth", "sixth",
+                                             "seventh", "eighth")),
+                     selectInput("level", "Choose achievement level:",
+                                 choices = c("Exceeded Expectations",
+                                             "Met Expectations",
+                                             "Partially Met Expectations",
+                                             "Did Not Meet Expectations"))
+                   ), plotOutput("gradePlot")),
+                   tabPanel("Achievement over time", plotOutput("timePlot")),
+                   tabPanel("Schools Map", leafletOutput("map"))
+       )
+     )
+   )
+  )
   
   
 
@@ -91,17 +98,31 @@ server <- function(input, output) {
            "seventh" = mcas_data_7,
            "eighth" = mcas_data_8)
   })
+  
+  levelCol <- reactive({
+    switch(input$level,
+           "Exceeded Expectations" = "e_percent",
+           "Met Expectations" = "m_percent",
+           "Partially Met Expectations" = "pm_percent",
+           "Did Not Meet Expectations" =  "nm_percent")
+  })
    
    output$gradePlot <- renderPlot({
      datasetInput() %>% 
-       ggplot(aes(x = m_e_percent, color = subject)) +
+       #filter(district_name == input$district) %>% 
+       ggplot(aes_string(x = levelCol(), color = "subject")) +
        geom_histogram(position = "identity", bins = 8, fill = "white", alpha = 0.5) +
-       xlab("Percent of students meeting or exceeding expectations") + 
+       xlab("Percent of students") + 
        ylab("Number of districts") +
-       ggtitle("How are students doing by subject?")
+       ggtitle("How are students in Massachusetts doing?")
+   })
+  
+   
+   output$timePlot <- renderPlot({
+     
    })
    
-   output$mymap <- renderLeaflet({
+   output$map <- renderLeaflet({
      school_types <- levels(schools_transformed@data$TYPE_DESC)
      pal <- colorFactor(palette = "Accent",
                         levels = school_types)
