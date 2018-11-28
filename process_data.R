@@ -75,7 +75,7 @@ mcas_old_data <-
   ) %>%
   mutate(
     file_index = parse_number(file_index),
-    source = filenames[file_index],
+    source = special_filenames[file_index],
     grade = str_remove(source, "final_project_data/new_data/"),
     grade = str_remove(grade, ".xlsx"),
     grade = case_when(grade == "grade-10-reg" ~ "10",
@@ -90,12 +90,10 @@ all_test_data <- bind_rows(mcas_data, mcas_old_data) %>%
   mutate(subject = case_when(subject == "ELA" ~ "ENGLISH LANGUAGE ARTS",
                              subject == "MATH" ~ "MATHEMATICS",
                              TRUE ~ subject)) %>% 
-  # The data as is has absolute numbers of students at each level. Let's change
-  # to do percent of students
-  mutate(exceeds_percent = exceeds / num_students_testing,
-         met_percent = met / num_students_testing,
-         partially_percent = partially / num_students_testing,
-         not_meeting_percent = not_meeting / num_students_testing)
+  # We would like to switch acheivement level to be an value rather than columns
+  gather(key = "achievement_level", "students_at_level", exceeds:not_meeting)
+  
+  
 
 # After getting all the data for MCAS by school and grade level, we read in
 # other information about schools. Utimately, we will join this into a single
