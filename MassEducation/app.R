@@ -15,6 +15,7 @@ library(readxl)
 library(janitor)
 library(knitr)
 library(shinythemes)
+library(plotly)
 
 colleges <- readOGR("colleges/COLLEGES_PT.shp")
 schools <- readOGR("schools/SCHOOLS_PT.shp")
@@ -28,100 +29,72 @@ districts_transformed <- spTransform(districts, CRS("+proj=longlat +ellps=GRS80"
 # massachusetts borders
 bounding_box <- c(-74.1054,41.1389,-69.6605,43.0038)
 
-mcas_data_3 <- read_excel("MCAS_data/2018-3-NextGenMCAS.xlsx", skip = 1) %>% 
-  clean_names() %>% 
-  mutate(subject = parse_factor(subject, levels = NULL))
-
-mcas_data_4 <- read_excel("MCAS_data/2018-4-NextGenMCAS.xlsx", skip = 1) %>% 
-  clean_names() %>% 
-  mutate(subject = parse_factor(subject, levels = NULL))
-
-mcas_data_5 <- read_excel("MCAS_data/2018-5-NextGenMCAS.xlsx", skip = 1) %>% 
-  clean_names() %>% 
-  mutate(subject = parse_factor(subject, levels = NULL))
-
-mcas_data_6 <- read_excel("MCAS_data/2018-6-NextGenMCAS.xlsx", skip = 1) %>% 
-  clean_names() %>% 
-  mutate(subject = parse_factor(subject, levels = NULL))
-
-mcas_data_7 <- read_excel("MCAS_data/2018-7-NextGenMCAS.xlsx", skip = 1) %>% 
-  clean_names() %>% 
-  mutate(subject = parse_factor(subject, levels = NULL))
-
-mcas_data_8 <- read_excel("MCAS_data/2018-8-NextGenMCAS.xlsx", skip = 1) %>% 
-  clean_names() %>% 
-  mutate(subject = parse_factor(subject, levels = NULL))
+all_data <- read_rds("joined_data")
 
 
 # Define UI for application that draws a histogram
-ui <- fluidPage(
-   theme = shinytheme("superhero"),
-   # Application title
-   titlePanel("Massachusetts School Data"),
-   # Sidebar with a slider input for number of bins 
-   sidebarLayout(
-      # Show a plot of the generated distribution
-     mainPanel(
-       tabsetPanel(type = "tabs",
-                   tabPanel("Plot by Level", 
-                            sidebarPanel(
-                     selectInput("dataset", "Choose a grade:", 
-                                 choices = c("third", "fourth",
-                                             "fifth", "sixth",
-                                             "seventh", "eighth")),
-                     selectInput("level", "Choose achievement level:",
-                                 choices = c("Exceeded Expectations",
-                                             "Met Expectations",
-                                             "Partially Met Expectations",
-                                             "Did Not Meet Expectations"))
-                   ), plotOutput("gradePlot")),
-                   tabPanel("Achievement over time", plotOutput("timePlot")),
-                   tabPanel("Schools Map", leafletOutput("map"))
-       )
-     )
-   )
+
+ui <- navbarPage(
+  "Massachusetts Schools",
+  theme = shinytheme("superhero"),
+  # Add info panel
+  tabPanel("Data Information",
+           fluidPage(
+             titlePanel("Information regarding this data set"),
+             h2("Where is the data from?"),
+             p(
+               "All data is collected from the Massachusetts department of eduction. You can see the data yourself. "
+             )
+           )
+  ),
+  # Add education page with sidebar and plot
+  tabPanel("Who's in school?",
+           fluidPage(
+             titlePanel("How does the demographic make up of a school impact test scores?"),
+             sidebarLayout(
+                sidebarPanel(
+                    selectInput("grade", "Choose a grade:",
+                                  choices = c("third" = "3", 
+                                              "fourth" = "4", 
+                                              "fifth" = "5",
+                                              "sixth" = "6", 
+                                              "seventh" = "7", 
+                                              "eighth" = "8")),
+                    selectInput("level", "Choose achievement level:", 
+                                  choices = c("Exceeded Expectations" = "exceeds_percent", 
+                                              "Met Expectations" = "met_percent",
+                                              "Partially Met Expectations" = "partially_percent", 
+                                              "Did Not Meet Expectations" = "not_meeting_percent"))
+                                  
+             ),
+             mainPanel(plotOutput("gradePlot"))
+           )
+          )
+  ),
+  # Add gender page with sidebar and plot
+  tabPanel("Map", 
+           fluidPage(
+             leafletOutput("map")
+           )
   )
-  
-  
+)
+
+
 
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
-  
-  # Return the requested dataset
-  datasetInput <- reactive({
-    switch(input$dataset,
-           "third" = mcas_data_3,
-           "fourth" = mcas_data_4,
-           "fifth" = mcas_data_5,
-           "sixth" = mcas_data_6,
-           "seventh" = mcas_data_7,
-           "eighth" = mcas_data_8)
-  })
-  
-  levelCol <- reactive({
-    switch(input$level,
-           "Exceeded Expectations" = "e_percent",
-           "Met Expectations" = "m_percent",
-           "Partially Met Expectations" = "pm_percent",
-           "Did Not Meet Expectations" =  "nm_percent")
-  })
    
    output$gradePlot <- renderPlot({
-     datasetInput() %>% 
-       #filter(district_name == input$district) %>% 
-       ggplot(aes_string(x = levelCol(), color = "subject")) +
+     all_data %>% 
+       filter(grade == input$grade) %>% 
+       ggplot(aes_string(x = input$level, color = "subject")) +
        geom_histogram(position = "identity", bins = 8, fill = "white", alpha = 0.5) +
        xlab("Percent of students") + 
        ylab("Number of districts") +
        ggtitle("How are students in Massachusetts doing?")
    })
   
-   
-   output$timePlot <- renderPlot({
-     
-   })
-   
    output$map <- renderLeaflet({
      school_types <- levels(schools_transformed@data$TYPE_DESC)
      pal <- colorFactor(palette = "Accent",
