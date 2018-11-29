@@ -112,24 +112,24 @@ ui <- navbarPage(
             )
           )
   ),
-  tabPanel("School Qualities",
-           fluidPage(
-             titlePanel("Are there other predictive factors at schools that impact this?"),
-             sidebarLayout(
-               sidebarPanel(
-                 selectInput("school",
-                             "What school or district characteristic are you interested in?",
-                             choices = c("Class Size" = "race_percent",
-                                         "Gender" = "gender_percent",
-                                         "Economic Disadvantage" = "economically_disadvantaged_percent",
-                                         "Special Needs" = "swd_percent",
-                                         "English Language Learners" = "ell_percent"))
-               ),
-               mainPanel(plotOutput("demPlot")),
-               position = "right"
-             )
-           )
-  ),
+  # tabPanel("School Qualities",
+  #          fluidPage(
+  #            titlePanel("Are there other predictive factors at schools that impact this?"),
+  #            sidebarLayout(
+  #              sidebarPanel(
+  #                selectInput("school",
+  #                            "What school or district characteristic are you interested in?",
+  #                            choices = c("Class Size" = "race_percent",
+  #                                        "Gender" = "gender_percent",
+  #                                        "Economic Disadvantage" = "economically_disadvantaged_percent",
+  #                                        "Special Needs" = "swd_percent",
+  #                                        "English Language Learners" = "ell_percent"))
+  #              ),
+  #              mainPanel(plotOutput("demPlot")),
+  #              position = "right"
+  #            )
+  #          )
+  # ),
   # Add gender page with sidebar and plot
   tabPanel("Map", 
            fluidPage(
