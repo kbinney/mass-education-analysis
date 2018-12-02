@@ -221,7 +221,7 @@ school_data <- all_test_data %>%
   left_join(class_size_gender) %>% 
   left_join(race_gender_enrollment) %>% 
   left_join(grad_rates) %>% 
-  left_join(restraints) %>% 
+  #left_join(restraints) %>% 
   left_join(pops) %>% 
   separate(school_code, into = c("district_code", "school_code"), sep = 4)
 
@@ -252,3 +252,23 @@ passing_percents <- all_data %>%
 passing_percents %>% 
   write_rds(path = "MassEducation/passing_percents.rds")
   
+# Additionally, some of the demographic data requires reformatting before it can be used as desired in the
+# Shiny App. In particular, some rows need to be converted to percents, and different race and gender
+# categories are already in percent but need to be gathered into a single column. Originally I did this 
+# in my shiny app, but after finalizing what characteristics I was interested in displaying it became
+# clear it made more sense to precreate the needed dataframe, save it, and read it into shiny
+dem_data <- all_data %>% 
+  gather(key = "race", value = "race_percent", african_american:multi_race_non_hispanic) %>% 
+  gather(key = "gender", value = "gender_percent", males:females) %>% 
+  mutate(economically_disadvantaged_percent = 100 * economically_disadvantaged / total_students,
+         ell_students_percent = 100 * ell_students / total_students,
+         swd_percent = 100 * swd / total_students) %>% 
+  select(school_name, school_code, race, race_percent, gender, gender_percent, economically_disadvantaged_percent,
+         ell_students_percent, swd_percent) %>% 
+  distinct()
+# I use this data alongside testing data, so prejoin the testing data with this demographic data before
+# saving into an rds file to use in my shiny app
+full_demographics_data <- passing_percents %>% 
+  left_join(dem_data) 
+full_demographics_data %>% 
+  write_rds(path = "MassEducation/full_demographic_data.rds")

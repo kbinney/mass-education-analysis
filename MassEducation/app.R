@@ -20,53 +20,38 @@ library(plotly)
 library(ggrepel)
 library(sp)
 
-#colleges <- readOGR("colleges/COLLEGES_PT.shp")
+# One tab is a map. To visualize the map, we need to read in the shape file and then
+# convert it to R readable format. Furthermore, we join that data with testing data
+# to visualize the spacial distribution of standardized testing scores. 
 schools <- readOGR("schools/SCHOOLS_PT.shp")
-#districts <- readOGR("schooldistricts/SCHOOLDISTRICTS_POLY.shp")
-
-# Have to convert shapefile to R - I have no idea why
 schools_transformed <- spTransform(schools, CRS("+proj=longlat +ellps=GRS80"))
-#colleges_transformed <- spTransform(colleges, CRS("+proj=longlat +ellps=GRS80"))
-#districts_transformed <- spTransform(districts, CRS("+proj=longlat +ellps=GRS80"))
 
-# massachusetts borders
+# Massachusetts borders, lat and long. Used to center leaflet map.
 bounding_box <- c(-74.1054,41.1389,-69.6605,43.0038)
 
+# I cleaned the data into 3 data frames ready for use here. 
+# joined data contains all the raw information, including
+# various school characteristics and all test scores. It can be used
+# to allow people to download data nicely prejoined and formatted. 
+# Passing percents is a much smaller data set consisting of school
+# level passing percents across all tests. (Ie percent of students
+# who met or exceeded expectations across all grades and test types)
+# Finally, dem_data is precleaned data to be used for visualizing
+# correlations between demographics and test scores. It has already
+# joined the demographic information and the passing percents.
 all_data <- read_rds("joined_data")
 passing_percents <- read_rds("passing_percents.rds")
+dem_data <- read_rds("full_demographic_data.rds")
 
-# We are interested in percent of students meeting or exceeding
-# expectations in a given school for some of our plots. First step is thus to calculate
-# that percentage.
-# school_test_score_percents <- all_data %>% 
-#   filter(achievement_level %in% c("met", "exceeds")) %>% 
-#   group_by(district_code, school_code, num_students_testing, grade, subject) %>% 
-#   # We need to first sum the students at the desired achievement level in 
-#   # a particular grade, otherwise we add students at level once for 
-#   # both each grade and each achievement level. We should only add
-#   # this for each grade, as it is a grade level summary. 
-#   # TODO: make better for percent of students taking particular test in science
-#   summarize(grade_students = sum(students_at_level)) %>% 
-#   ungroup() %>% 
-#   group_by(district_code, school_code) %>% 
-#   summarize(test_percent = 100 * sum(grade_students) / sum(num_students_testing))
-
-# We want some of our demographic data to go from cols to variables for easier plotting
-dem_data <- all_data %>% 
-  gather(key = "race", value = "race_percent", african_american:multi_race_non_hispanic) %>% 
-  gather(key = "gender", value = "gender_percent", males:females) %>% 
-  mutate(economically_disadvantaged_percent = 100 * economically_disadvantaged / total_students,
-         ell_students_percent = 100 * ell_students / total_students,
-         swd_percent = 100 * swd / total_students) %>% 
-  distinct()
-modified_data <- passing_percents %>% 
-  left_join(dem_data)
-# Define UI for Education application
+# Define UI for Education application. I was interested in doing
+# many tabs with different selections for each tab, and thus chose
+# a navbar frame work with various whole page options. 
 ui <- navbarPage(
   "Massachusetts Schools",
-  #theme = shinytheme("superhero"),
-  # Add info panel
-  tabPanel("Data Information",
+  theme = shinytheme("superhero"),
+  # The default panel contains a summary of the data source, interesting findings, and a
+  # guide to the app
+  tabPanel("Home",
            fluidPage(
              titlePanel("Information regarding this data set"),
              h2("Where is the data from?"),
@@ -75,7 +60,12 @@ ui <- navbarPage(
              )
            )
   ),
-  # Add education page with sidebar and plot
+  # The next panel allows users to see a high level overview of how well students
+  # perform on these tests. Users can subset the data by grade and test scores. I
+  # chose to visualize the data with a histogram to allow others to see generally 
+  # how schools across the state are doing - do lots of schools have high percentages
+  # of students doing well? Doing poorly? Do more schools do better on math or language arts?
+  # Does that differ across grades? I think a histogram is a good way to answer these questions
   tabPanel("Basic Scores",
            fluidPage(
              titlePanel("Generally, how do students do on these tests?"),
@@ -108,6 +98,20 @@ ui <- navbarPage(
            )
           )
   ),
+  
+  # After seeing schools in the aggregate, visitors to my shiny app can start to 
+  # pin down demographic characteristics associated with performance on test scores. 
+  # I was hoping initially to be able to separate school level information by demographic
+  # (ie how well are students in different racial groups doing at the same school). This
+  # information proved very difficult to get from the Massachusetts department of education. 
+  # It was much easier to get a schools test scores, and independently, its demographic 
+  # information. I decided these relationships were still interesting. In this tab, 
+  # I visualize demographics and test scores in a 2D scatter plot, seeing if percent of 
+  # in a demographic category demostrate correlation with higher or lower passing test 
+  # scores. I considered letting users choose which test types or scores or grades they
+  # were interested in, but found this added significant complexity and time to the app. 
+  # Thus, I choose to precalculate percent of students meeting or exceeding expectations
+  # accross all grades and test subjects. 
   tabPanel("Demographics",
            fluidPage(
               titlePanel("Do demographics impact a school's test scores?"),
@@ -122,13 +126,18 @@ ui <- navbarPage(
                                             "English Language Learners" = "ell_percent"))
                   ),
                   mainPanel(plotOutput("demPlot")),
-                position = "right"
+                  position = "right"
             )
           )
   ),
+  # My second to last tab demostrates school characteristics rather than demographic
+  # characteristics. This tab contains things that may be changable. I also chose
+  # to include graduation percent, even though it isn't as changable as say spending, 
+  # to allow users to investigate if test scores are correlated with other measures of 
+  # success. 
   tabPanel("School Qualities",
            fluidPage(
-             titlePanel("Are there other predictive factors at schools that impact test scores?"),
+             titlePanel("Are there other predictive factors correlated with test scores?"),
              sidebarLayout(
                sidebarPanel(
                  selectInput("school",
@@ -136,7 +145,6 @@ ui <- navbarPage(
                              choices = c("Per Pupil Spending" = "spending",
                                          "Graduation Percent" = "grad_percent",
                                          "Average Class Size" = "avg_class_size",
-                                         "Number of Students Restrained" = "students_restrained",
                                          "Average Teacher Salary" = "average_salary"))
                ),
                mainPanel(plotOutput("qualPlot")),
@@ -144,7 +152,13 @@ ui <- navbarPage(
              )
            )
   ),
-  # Add gender page with sidebar and plot
+  # My final tab is a map that contains points for all schools included in the MCAS data.
+  # Schools are colored by their passing rates on MCAS testing, creating a spatial visualization
+  # of one measure of school quality. Initally, I wanted to allow users to select regions on 
+  # the map and then show data related to the selected schools. However, it turns out that
+  # region selection on leaflet maps in shiny is basically not supported. The workarounds
+  # I tried ended up making the map look significantly worse, and did not add much interesting
+  # information.
   tabPanel("Map", 
            fluidPage(
              leafletOutput("map"),
@@ -154,9 +168,9 @@ ui <- navbarPage(
 )
 
 
-
-
-# Define server logic required to draw a histogram
+# Define server function logic to create visualizations and captions for
+# the shiny app using inputs from the UI. Each tab's server logic
+# is titled to divide the code more clearly.
 server <- function(input, output) {
   
   ##################################################################
@@ -164,7 +178,13 @@ server <- function(input, output) {
   # BASIC SCORES PLOTTING                                          #
   #                                                                #
   ##################################################################
-  # Collect data to examine and use in table and plot output
+  # Collect data to examine and use in plot output. We filter given
+  # the user's input. Filtering can be direct because both grade 
+  # and achievement level are already strings. 
+  # We take the inputs (grades and levels) to get the percent of students
+  # at that grade and level in a particular school. We make sure to not 
+  # summarize over different types of tests, so visualization can be
+  # colored by type of test
    filtered_data <- reactive({all_data %>% 
        filter(grade %in% input$grade,
               achievement_level %in% input$level) %>% 
@@ -173,25 +193,23 @@ server <- function(input, output) {
        # a particular grade, otherwise we add students at level once for 
        # both each grade and each achievement level. We should only add
        # this for each grade, as it is a grade level summary. 
-       # TODO: make better for percent of students taking particular test in science
        summarize(grade_students = sum(students_at_level)) %>% 
-       ungroup() %>% 
+       # ungroup() %>% 
        group_by(school_name, district_code, school_code, subject) %>% 
        summarize(percent = 100 * sum(grade_students) / sum(num_students_testing))
      })
    
+   # Once we've formatted the data, it is relatively easy to plot. The historgram's
+   # breaks are manually set to ensure we see bins for all possible percents.
    output$gradePlot <- renderPlot({
-     # We take the inputs (grades and levels) to get the percent of students
-     # at that grade and level in a particular school. We make sure to not 
-     # summarize over different types of tests
      filtered_data() %>% 
        ggplot(aes(x = percent, color = subject)) +
        geom_histogram(position = "identity", 
                       breaks = c(0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100), 
                       fill = "white", 
                       alpha = 0.5) +
-       xlab("Percent of students") + 
-       ylab("Number of districts") +
+       xlab("Percent of students in given school with specified score(s)") + 
+       ylab("Number of schools") +
        ggtitle("How are students in Massachusetts doing?")
    })
 
@@ -214,13 +232,13 @@ server <- function(input, output) {
          fill = switch(input$dem,
                        "race_percent" = "race",
                        "gender_percent" = "gender")
-         plot <- modified_data %>% 
+         plot <- dem_data %>% 
            select(input$dem, percent_passing, fill) %>% 
            distinct() %>% 
            ggplot(aes_string(x = input$dem, y = "percent_passing")) +
            facet_wrap(as.formula(paste0("~", fill)))
      } else {
-       plot <- modified_data %>% 
+       plot <- dem_data %>% 
          select(input$dem, percent_passing) %>% 
          distinct() %>% 
          ggplot(aes_string(x = input$dem, y = "percent_passing"))
