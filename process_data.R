@@ -214,8 +214,9 @@ pops <- read_excel("final_project_data/new_data/selectedpopulations.xlsx", skip 
 # restraints: 911 (district, school)
 # pops: 1848 (school)
 # salaries: 324 (district)
-## After reading in all demographic data, I want to join it into one large data frame with the mcas data
+# After reading in all demographic data, I want to join it into one large data frame with the mcas data
 # Some data frames are by school and some by district. I start with joining all schools and all districts
+# Initially, I chose to join all this data into a single data frame
 school_data <- all_test_data %>% 
   left_join(class_size_gender) %>% 
   left_join(race_gender_enrollment) %>% 
@@ -234,3 +235,20 @@ all_data <- school_data %>%
 
 ## Save to be used in shiny app
 write_rds(all_data, path = "MassEducation/joined_data")
+
+
+# For a lot of my plots, I'm intersted in everyone in a given school that meets
+# or exceeds expectations. Doing this analysis in my shiny app is slow, so I
+# create a new data frame with just this information
+passing_percents <- all_data %>% 
+  # To calculate this percent, it will be easier if achivement level is in columns
+  spread(achievement_level, students_at_level) %>% 
+  # Here, I group to get all tests and all grades at a given school
+  group_by(school_name, district_code, school_code) %>% 
+  summarize(percent_passing = 100 * (sum(exceeds) + sum(met)) / sum(num_students_testing)) %>% 
+  # I want to join this data with my shapefile data in the shiny app to show this data visually. 
+  # The shape file has a single school id, so I add that column back in here
+  mutate(SCHID = paste0(district_code, school_code))
+passing_percents %>% 
+  write_rds(path = "MassEducation/passing_percents.rds")
+  
