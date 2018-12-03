@@ -23,10 +23,12 @@ library(sp)
 # One tab is a map. To visualize the map, we need to read in the shape file and then
 # convert it to R readable format. Furthermore, we join that data with testing data
 # to visualize the spacial distribution of standardized testing scores. 
+
 schools <- readOGR("schools/SCHOOLS_PT.shp")
 schools_transformed <- spTransform(schools, CRS("+proj=longlat +ellps=GRS80"))
 
 # Massachusetts borders, lat and long. Used to center leaflet map.
+
 bounding_box <- c(-74.1054,41.1389,-69.6605,43.0038)
 
 # I cleaned the data into 3 data frames ready for use here. 
@@ -39,18 +41,22 @@ bounding_box <- c(-74.1054,41.1389,-69.6605,43.0038)
 # Finally, dem_data is precleaned data to be used for visualizing
 # correlations between demographics and test scores. It has already
 # joined the demographic information and the passing percents.
+
 all_data <- read_rds("joined_data")
 passing_percents <- read_rds("passing_percents.rds")
 dem_data <- read_rds("full_demographic_data.rds")
+school_data <- read_rds("school_data.rds")
 
 # Define UI for Education application. I was interested in doing
 # many tabs with different selections for each tab, and thus chose
 # a navbar frame work with various whole page options. 
+
 ui <- navbarPage(
   "Massachusetts Schools",
   theme = shinytheme("superhero"),
   # The default panel contains a summary of the data source, interesting findings, and a
   # guide to the app
+  
   tabPanel("Home",
            fluidPage(
              titlePanel("Information regarding this data set"),
@@ -66,6 +72,7 @@ ui <- navbarPage(
   # how schools across the state are doing - do lots of schools have high percentages
   # of students doing well? Doing poorly? Do more schools do better on math or language arts?
   # Does that differ across grades? I think a histogram is a good way to answer these questions
+  
   tabPanel("Basic Scores",
            fluidPage(
              titlePanel("Generally, how do students do on these tests?"),
@@ -112,6 +119,7 @@ ui <- navbarPage(
   # were interested in, but found this added significant complexity and time to the app. 
   # Thus, I choose to precalculate percent of students meeting or exceeding expectations
   # accross all grades and test subjects. 
+  
   tabPanel("Demographics",
            fluidPage(
               titlePanel("Do demographics impact a school's test scores?"),
@@ -130,11 +138,13 @@ ui <- navbarPage(
             )
           )
   ),
+  
   # My second to last tab demostrates school characteristics rather than demographic
   # characteristics. This tab contains things that may be changable. I also chose
   # to include graduation percent, even though it isn't as changable as say spending, 
   # to allow users to investigate if test scores are correlated with other measures of 
   # success. 
+  
   tabPanel("School Qualities",
            fluidPage(
              titlePanel("Are there other predictive factors correlated with test scores?"),
@@ -152,6 +162,7 @@ ui <- navbarPage(
              )
            )
   ),
+  
   # My final tab is a map that contains points for all schools included in the MCAS data.
   # Schools are colored by their passing rates on MCAS testing, creating a spatial visualization
   # of one measure of school quality. Initally, I wanted to allow users to select regions on 
@@ -159,6 +170,7 @@ ui <- navbarPage(
   # region selection on leaflet maps in shiny is basically not supported. The workarounds
   # I tried ended up making the map look significantly worse, and did not add much interesting
   # information.
+  
   tabPanel("Map", 
            fluidPage(
              leafletOutput("map"),
@@ -171,6 +183,7 @@ ui <- navbarPage(
 # Define server function logic to create visualizations and captions for
 # the shiny app using inputs from the UI. Each tab's server logic
 # is titled to divide the code more clearly.
+
 server <- function(input, output) {
   
   ##################################################################
@@ -185,22 +198,25 @@ server <- function(input, output) {
   # at that grade and level in a particular school. We make sure to not 
   # summarize over different types of tests, so visualization can be
   # colored by type of test
+  
    filtered_data <- reactive({all_data %>% 
        filter(grade %in% input$grade,
               achievement_level %in% input$level) %>% 
        group_by(school_name, district_code, school_code, subject, num_students_testing, grade) %>% 
+       
        # We need to first sum the students at the desired achievement level in 
        # a particular grade, otherwise we add students at level once for 
        # both each grade and each achievement level. We should only add
        # this for each grade, as it is a grade level summary. 
+       
        summarize(grade_students = sum(students_at_level)) %>% 
-       # ungroup() %>% 
        group_by(school_name, district_code, school_code, subject) %>% 
        summarize(percent = 100 * sum(grade_students) / sum(num_students_testing))
      })
    
    # Once we've formatted the data, it is relatively easy to plot. The historgram's
    # breaks are manually set to ensure we see bins for all possible percents.
+   
    output$gradePlot <- renderPlot({
      filtered_data() %>% 
        ggplot(aes(x = percent, color = subject)) +
@@ -220,6 +236,7 @@ server <- function(input, output) {
    #                                                                #
    ##################################################################
    output$demPlot <- renderPlot({
+     
      # There are a lot of repeated rows because of the number of different
      # demographic categories intially in the dataset. However, these rows
      # are mostly repeated for the sake of the choosen columns. Distinct 
@@ -228,6 +245,7 @@ server <- function(input, output) {
      # in order to allow faceting by these characteristics. Alternatively,
      # I could have selected just one, but the additionally code complexity
      # did not seem worth it for marginal speed benefit.
+     
      if (input$dem == "race_percent" | input$dem == "gender_percent"){
          fill = switch(input$dem,
                        "race_percent" = "race",
@@ -249,12 +267,15 @@ server <- function(input, output) {
        ylab("Percent of students Meeting or Exceeding Expectations") +
        ggtitle("Do demographics impact schools test scores?")
    })
+   
    ##################################################################
    #                                                                #
    # SCHOOL CHARACTERISTIC PLOTTING                                 #
    #                                                                #
    ##################################################################
+   
    output$qualPlot <- renderPlot({
+     
      # There are a lot of repeated rows because of the number of different
      # demographic categories intially in the dataset. However, these rows
      # are mostly repeated for the sake of the choosen columns. Distinct 
@@ -263,8 +284,9 @@ server <- function(input, output) {
      # in order to allow faceting by these characteristics. Alternatively,
      # I could have selected just one, but the additionally code complexity
      # did not seem worth it for marginal speed benefit.
+     
      if (input$school == "spending"){
-       modified_data <- modified_data %>% 
+       modified_data <- school_data %>% 
          gather(key = "spending_type", value = "amount", 
                 in_district_per_pupil_spending, total_per_pupil_spending) %>% 
          select(spending_type, amount, percent_passing)
@@ -273,13 +295,16 @@ server <- function(input, output) {
          ggplot(aes(x = amount, y = percent_passing)) +
          facet_wrap(~spending_type)
      } else {
-       plot <- modified_data %>% 
+       plot <- school_data %>% 
+         # TODO explain class size
+         filter(avg_class_size > 0) %>% 
          select(input$school, percent_passing) %>% 
          distinct() %>% 
          ggplot(aes_string(x = input$school, y = "percent_passing"))
      }
      plot +
        geom_point() +
+       geom_smooth(na.rm = TRUE, method = "lm", se = FALSE) +
        xlab("School Characteristic") + 
        ylab("Percent of students Meeting or Exceeding Expectations") +
        ggtitle("Do demographics impact schools test scores?")
@@ -292,27 +317,31 @@ server <- function(input, output) {
    ##################################################################
    
    output$map <- renderLeaflet({
-     schools_transformed <- merge(schools_transformed,passing_percents, by="SCHID")
+     schools_transformed <- merge(schools_transformed,passing_percents, by="SCHID") %>% subset(!is.na(percent_passing))
      passing_levels <- unique(schools_transformed@data$percent_passing)
      pal <- colorNumeric(palette = "BuPu",
                         domain = c(0, 100))
      leaflet(schools_transformed) %>% 
        addProviderTiles("CartoDB") %>% 
+       
        # draw on districts - This made html file too big for github to deal with nicely and would have been difficult to email so removing for now
        #addPolygons(data = districts_transformed,
        #opacity = 0.1, fill = FALSE) %>% 
        # put school locations on top
+       
        addCircleMarkers(radius = 1,
                         opacity = 0.5,
                         label = ~NAME,
                         color = ~pal(percent_passing)) %>% 
-       addLegend(position = "bottomright",
+       addLegend(position = "bottomleft",
                  pal = pal,
-                 values = c(0, 100)) %>% 
+                 values = c(0, 100),
+                 title = "Students passing MCAS") %>% 
        setMaxBounds(lng1 = bounding_box[1],
                     lng2 = bounding_box[3],
                     lat1 = bounding_box[2],
                     lat2 = bounding_box[4])
+     
        # Way to select points on Leaflet map. See more explanation
        # at https://stackoverflow.com/questions/42528400/plot-brushing-or-accessing-drawn-shape-geometry-for-spatial-subsets-in-shiny-lea
        # addDrawToolbar(
@@ -328,5 +357,6 @@ server <- function(input, output) {
 }
 
 # Run the application 
+
 shinyApp(ui = ui, server = server)
 
