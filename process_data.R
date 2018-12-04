@@ -107,7 +107,9 @@ all_test_data <- bind_rows(mcas_data, mcas_old_data) %>%
   
   gather(key = "achievement_level", "students_at_level", exceeds:not_meeting)
   
-  
+
+all_test_data %>% 
+  write_rds("MassEducation/all_test_data.rds")
 
 # After getting all the data for MCAS by school and grade level, we read in
 # other information about schools. Utimately, we will join this into a single

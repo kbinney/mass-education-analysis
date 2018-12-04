@@ -43,6 +43,7 @@ bounding_box <- c(-74.1054,41.1389,-69.6605,43.0038)
 # joined the demographic information and the passing percents.
 
 all_data <- read_rds("joined_data")
+test_data <- read_rds("all_test_data.rds")
 passing_percents <- read_rds("passing_percents.rds")
 dem_data <- read_rds("full_demographic_data.rds")
 school_data <- read_rds("school_data.rds")
@@ -53,19 +54,53 @@ school_data <- read_rds("school_data.rds")
 
 ui <- navbarPage(
   "Massachusetts Schools",
-  theme = shinytheme("superhero"),
+  theme = shinytheme("yeti"),
+  
   # The default panel contains a summary of the data source, interesting findings, and a
   # guide to the app
   
   tabPanel("Home",
            fluidPage(
-             titlePanel("Information regarding this data set"),
-             h2("Where is the data from?"),
-             p(
-               "All data is collected from the Massachusetts department of eduction."
-             )
-           )
+             titlePanel("What is the quality of Public Schools in Massachusetts?"),
+             h2("Major Findings"),
+             h3("Massachusetts schools may be failing some of our most vulnerable students"),
+             p(paste("Higher percentages of African American, Hispanic  or economically ",
+                    "disadvantaged students is correlated with lower rates of passing ",
+                    "scores on state testing in Massachusetts public schools. Smaller ", 
+                    "class sizes, higher per pupil spending (both in and out of district), ",
+                    "and higher teacher salaries may help struggling schools. These factors ",
+                    "are correlated with higher percents of students achieving passing scores ",
+                    "on the MCAS (state test). Schools in the greater Boston suburbs generally ",
+                    "have higher rates of students meeting or achieving expectations on the ",
+                    "MCAS while schools in urban areas tend not to do as well.")),
+             h2("Background Information"),
+             p(paste("The MCAS (Massachhusetts Comprehensive Assessment System) is a statewide student",
+                     "assessment initiated as part of the Education Reform Act of 1993. The MCAS are ", 
+                     "administered between 3rd and 10th grade in subjects including math, reading ", 
+                     "comprehension, language arts, and science. Students must pass the MCAS in Math, ",
+                     "ELA (english language arts) and in a science subject to graduate from High School.")),
+            a("Learn more about the MCAS here", 
+              href = "https://en.wikipedia.org/wiki/Massachusetts_Comprehensive_Assessment_System"),
+            p(paste("\nIn recent years, Massachusetts has realized MCAS were not meeting state goals. ",
+                    "The state is in the process of switching to new standards. In this app, tests ",
+                    "before High School were administered under the old system. These tests are scored ",
+                    "with four levels: Exceeds Expectations, Meets Expectations, Partially Meets ",
+                    "Expecations and Not Meeting Expectations. The old system, under which High ", 
+                    "School tests were administed, used different scoring. Students were classified ", 
+                    "as Advanced, Proficient, Needs Improvement, and Warning and Failing. In this app ",
+                    "the old scores were mapped to the new ones.")),
+            a("Learn more about the new MCAS here", 
+              href = "http://www.doe.mass.edu/mcas/nextgen/"),
+            h2("Data Source"),
+            p("All data used in this project was collected from the Massachussetts Department of ", 
+              "Education. Test scores are from Spring 2018 testing. School demographics information ", 
+              "is from the 2016-2017 school year, as this is the most recent available data."),
+            a("See the data for yourself here", 
+              href = "http://profiles.doe.mass.edu/state_report/")
+
+        )
   ),
+  
   # The next panel allows users to see a high level overview of how well students
   # perform on these tests. Users can subset the data by grade and test scores. I
   # chose to visualize the data with a histogram to allow others to see generally 
@@ -95,12 +130,31 @@ ui <- navbarPage(
                                               "Partially Met Expectations" = "partially", 
                                               "Did Not Meet Expectations" = "not_meeting"),
                                 selected = "met",
-                                multiple = TRUE)
-                                  
+                                multiple = TRUE),
+                    helpText("This histogram looks at scores on the 2018 ",
+                             "MCAS test. Note, students only have to take ",
+                             "and pass one science test, so the total number ",
+                             "of schools taking each test may be lower than ",
+                             "for other grades or subjects. Students must meet ",
+                             "testing standards to graduate from high school. ",
+                             "Students must mee or exceed expectations on ELA, ",
+                             "Math, and a Science test, or partially ",
+                             "meet expectations and complete a school level ",
+                             "improvement plan. Note, MA is currently switching ",
+                             "to new standards for MCAS testing. The High School ",
+                             "tests are still under the old system. In this app, we ",
+                             "convert the old standards to the new labels for ",
+                             "ease of visibility. Read more on home page.")
+                    
              ),
              mainPanel(
                plotOutput("gradePlot"),
-               DT::dataTableOutput("baseTable")
+               DT::dataTableOutput("baseTable"),
+               p(paste("Students appear to perform better on ELA tests: More schools have higher percents",
+                       " of students meeting or exceeding expectations on English Language Arts tests than",
+                       " math tests. This trend may reverse slightly in 7th and 8th grade, with more schools",
+                       " with higher percentages of students doing well on the math test. However, by high ", 
+                       "school students are doing better on the ELA test again."))
              )
            )
           )
@@ -179,7 +233,6 @@ ui <- navbarPage(
   )
 )
 
-
 # Define server function logic to create visualizations and captions for
 # the shiny app using inputs from the UI. Each tab's server logic
 # is titled to divide the code more clearly.
@@ -199,10 +252,10 @@ server <- function(input, output) {
   # summarize over different types of tests, so visualization can be
   # colored by type of test
   
-   filtered_data <- reactive({all_data %>% 
+   filtered_data <- reactive({test_data %>% 
        filter(grade %in% input$grade,
               achievement_level %in% input$level) %>% 
-       group_by(school_name, district_code, school_code, subject, num_students_testing, grade) %>% 
+       group_by(school_name, school_code, subject, num_students_testing, grade) %>% 
        
        # We need to first sum the students at the desired achievement level in 
        # a particular grade, otherwise we add students at level once for 
@@ -210,7 +263,7 @@ server <- function(input, output) {
        # this for each grade, as it is a grade level summary. 
        
        summarize(grade_students = sum(students_at_level)) %>% 
-       group_by(school_name, district_code, school_code, subject) %>% 
+       group_by(school_name, school_code, subject) %>% 
        summarize(percent = 100 * sum(grade_students) / sum(num_students_testing))
      })
    
