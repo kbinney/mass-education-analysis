@@ -369,19 +369,28 @@ server <- function(input, output) {
    #                                                                #
    ##################################################################
    
+   # Initially, I planned to allow users to select schools on a map in order
+   # to see schools in towns near them. However, unlike plot selection, there
+   # is no clear way to select points on a map with leaflet. I still wanted to
+   # visualize something spatially, so I chose to map schools, with the color
+   # of the marker being the percent of students meeting or exceeding 
+   # expectations on the MCAS. This visualization ended up being quite interesting
+   # as there appear to be spatial divisions in how well schools do on MCAS tests.
+   
    output$map <- renderLeaflet({
-     schools_transformed <- merge(schools_transformed,passing_percents, by="SCHID") %>% subset(!is.na(percent_passing))
+     
+     # To visualize MCAS performance, I need to merge my spatial dataset and
+     # my test score dataset. The spatial dataset contains more than just
+     # public schools. Only public schools have test data, so I chose to 
+     # remove schools without testing data from the data set I visualize. 
+     
+     schools_transformed <- merge(schools_transformed,passing_percents, by="SCHID") %>% 
+       subset(!is.na(percent_passing))
      passing_levels <- unique(schools_transformed@data$percent_passing)
      pal <- colorNumeric(palette = "BuPu",
                         domain = c(0, 100))
      leaflet(schools_transformed) %>% 
        addProviderTiles("CartoDB") %>% 
-       
-       # draw on districts - This made html file too big for github to deal with nicely and would have been difficult to email so removing for now
-       #addPolygons(data = districts_transformed,
-       #opacity = 0.1, fill = FALSE) %>% 
-       # put school locations on top
-       
        addCircleMarkers(radius = 1,
                         opacity = 0.5,
                         label = ~NAME,
@@ -390,21 +399,14 @@ server <- function(input, output) {
                  pal = pal,
                  values = c(0, 100),
                  title = "Students passing MCAS") %>% 
+       # It is easy on leaflet to zoom or move outside the 
+       # interesting area. Setting the bounds around MA
+       # prevents this from occuring.
+       
        setMaxBounds(lng1 = bounding_box[1],
                     lng2 = bounding_box[3],
                     lat1 = bounding_box[2],
                     lat2 = bounding_box[4])
-     
-       # Way to select points on Leaflet map. See more explanation
-       # at https://stackoverflow.com/questions/42528400/plot-brushing-or-accessing-drawn-shape-geometry-for-spatial-subsets-in-shiny-lea
-       # addDrawToolbar(
-       #   targetGroup='draw',
-       #   polylineOptions=FALSE,
-       #   markerOptions = FALSE,
-       #   circleOptions = TRUE)  %>%
-       # addLayersControl(overlayGroups = c('draw'), options =
-       #                    layersControlOptions(collapsed=FALSE)) 
-
    })
    
 }
