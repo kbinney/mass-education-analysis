@@ -400,7 +400,14 @@ server <- function(input, output) {
            filter(!is.na(grad_percent))
        }
       
-       # A few districts (Medford, Sharon)
+       # A few districts (Medford, Sharon) don't have class size data
+       # so I filter out na rows from these districts
+       
+       if (input$school == "avg_class_size") {
+         school_data <- school_data %>% 
+           filter(!is.na(avg_class_size))
+       }
+       
        plot <- school_data %>% 
          select(input$school, percent_passing) %>% 
          distinct() %>% 
