@@ -115,6 +115,11 @@ all_test_data %>%
 # other information about schools. Utimately, we will join this into a single
 # data frame
 
+# Medford and Sharon school districts and the Greenfield Commonwealth Virtual District
+# have all 0s for each input. They appear not to have accurately provided this information,
+# so information relating to these schools is filtered out of the dataset. These are the
+# only districts with average class size of 0, so I use that to do my filtering. 
+
 class_size_gender <- read_excel("final_project_data/new_data/ClassSizebyGenPopulation.xlsx", skip = 1) %>% 
   clean_names() %>% 
   mutate(number_classes = parse_number(total_number_of_classes),
@@ -127,14 +132,14 @@ class_size_gender <- read_excel("final_project_data/new_data/ClassSizebyGenPopul
          
          swd_percent = parse_number(students_with_disabilities_percent, na = c("", "NA", "#####")),
          ec_disad_percent = parse_number(economically_disadvantaged_percent)) %>% 
-  select(school_name,
-         school_code,
+  select(school_code,
          number_classes,
          avg_class_size,
          num_students,
          ell_percent,
          swd_percent,
-         ec_disad_percent)
+         ec_disad_percent) %>% 
+  filter(avg_class_size > 0)
 
 race_gender_enrollment <- read_excel("final_project_data/new_data/enrollmentbyracegender-school.xlsx", skip = 3, trim_ws = TRUE) %>% 
   clean_names() %>% 
@@ -142,7 +147,9 @@ race_gender_enrollment <- read_excel("final_project_data/new_data/enrollmentbyra
   
   # The school code has an extra space to start. We need to remove to later join the data set
   
-  mutate(school_code = str_trim(school_code))
+  mutate(school_code = str_trim(school_code)) %>% 
+  select(everything(), -school_name)
+
 grad_rates <- read_excel("final_project_data/new_data/gradrates.xlsx", skip = 1) %>% 
   clean_names() %>% 
   
@@ -156,8 +163,7 @@ grad_rates <- read_excel("final_project_data/new_data/gradrates.xlsx", skip = 1)
          hs_equiv_percent = parse_number(percent_h_s_equiv),
          drop_out_percent = parse_number(percent_dropped_out),
          excluded_percent = parse_number(percent_permanently_excluded)) %>% 
-  select(school_name,
-         school_code,
+  select(school_code,
          cohort_size,
          grad_percent,
          in_school_percent,
@@ -218,7 +224,7 @@ pops <- read_excel("final_project_data/new_data/selectedpopulations.xlsx", skip 
   # The data spreadsheet has one row with section names, and one with % vs. #
   # I keep just the numbers, except use ell_percent to determine total students
   
-  transmute(school_name = school,
+  transmute(#school_name = school,
          school_code = orgcode,
          non_native_english = first_language_not_english,
          ell_students = english_language_learner,
@@ -296,7 +302,9 @@ passing_percents <- all_data %>%
   # I want to join this data with my shapefile data in the shiny app to show this data visually. 
   # The shape file has a single school id, so I add that column back in here
   
-  mutate(SCHID = paste0(district_code, school_code))
+  mutate(SCHID = paste0(district_code, school_code)) %>% 
+  ungroup() 
+
 passing_percents %>% 
   write_rds(path = "MassEducation/passing_percents.rds")
   
@@ -312,7 +320,7 @@ dem_data <- all_data %>%
   mutate(economically_disadvantaged_percent = 100 * economically_disadvantaged / total_students,
          ell_students_percent = 100 * ell_students / total_students,
          swd_percent = 100 * swd / total_students) %>% 
-  select(school_name, school_code, race, race_percent, gender, gender_percent, economically_disadvantaged_percent,
+  select(school_name, district_code, school_code, race, race_percent, gender, gender_percent, economically_disadvantaged_percent,
          ell_students_percent, swd_percent) %>% 
   distinct()
 
@@ -320,7 +328,7 @@ dem_data <- all_data %>%
 # saving into an rds file to use in my shiny app
 
 full_demographics_data <- passing_percents %>% 
-  left_join(dem_data) 
+  left_join(dem_data, by = c("school_code", "district_code")) 
 full_demographics_data %>% 
   write_rds(path = "MassEducation/full_demographic_data.rds")
 
@@ -334,7 +342,7 @@ school_data <- all_data %>%
   distinct()
 
 full_school_char_data <- passing_percents %>% 
-  left_join(school_data) 
+  left_join(school_data, by = c("school_code", "district_code")) 
 
 full_school_char_data %>% 
   write_rds(path = "MassEducation/school_data.rds")

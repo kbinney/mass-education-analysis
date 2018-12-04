@@ -19,6 +19,7 @@ library(shinythemes)
 library(plotly)
 library(ggrepel)
 library(sp)
+library(scales)
 
 # One tab is a map. To visualize the map, we need to read in the shape file and then
 # convert it to R readable format. Furthermore, we join that data with testing data
@@ -31,6 +32,18 @@ schools_transformed <- spTransform(schools, CRS("+proj=longlat +ellps=GRS80"))
 
 bounding_box <- c(-74.1054,41.1389,-69.6605,43.0038)
 
+# School characteristics choices. Labeled separately 
+# rather than just in input so I can use the label
+# choices as names on my plot as well as plot selections
+characteristic_choices <- 
+  c("Per Pupil Spending" = "spending",
+  "Graduation Percent" = "grad_percent",
+  "Average Class Size" = "avg_class_size",
+  "Average Teacher Salary" = "average_salary")
+characteristic_titles <-
+  c("Teachers salaries may have a very slight positive correlation with test scores" = "average_salary",
+    "Some schools have high graduation rates, despite low passing rates on the MCAS" = "grad_percent")
+
 # I cleaned the data into 3 data frames ready for use here. 
 # joined data contains all the raw information, including
 # various school characteristics and all test scores. It can be used
@@ -42,7 +55,7 @@ bounding_box <- c(-74.1054,41.1389,-69.6605,43.0038)
 # correlations between demographics and test scores. It has already
 # joined the demographic information and the passing percents.
 
-all_data <- read_rds("joined_data")
+# all_data <- read_rds("joined_data")
 test_data <- read_rds("all_test_data.rds")
 passing_percents <- read_rds("passing_percents.rds")
 dem_data <- read_rds("full_demographic_data.rds")
@@ -149,7 +162,6 @@ ui <- navbarPage(
              ),
              mainPanel(
                plotOutput("gradePlot"),
-               DT::dataTableOutput("baseTable"),
                p(paste("Students appear to perform better on ELA tests: More schools have higher percents",
                        " of students meeting or exceeding expectations on English Language Arts tests than",
                        " math tests. This trend may reverse slightly in 7th and 8th grade, with more schools",
@@ -185,7 +197,8 @@ ui <- navbarPage(
                                             "Gender" = "gender_percent",
                                             "Economic Disadvantage" = "economically_disadvantaged_percent",
                                             "Special Needs" = "swd_percent",
-                                            "English Language Learners" = "ell_percent"))
+                                            "English Language Learners" = "ell_students_percent")),
+                    checkboxInput("demBestFit", "Add best fit line", FALSE)
                   ),
                   mainPanel(plotOutput("demPlot")),
                   position = "right"
@@ -193,11 +206,11 @@ ui <- navbarPage(
           )
   ),
   
-  # My second to last tab demostrates school characteristics rather than demographic
-  # characteristics. This tab contains things that may be changable. I also chose
-  # to include graduation percent, even though it isn't as changable as say spending, 
-  # to allow users to investigate if test scores are correlated with other measures of 
-  # success. 
+  # My second to last tab demostrates school characteristics rather than
+  # demographic characteristics. This tab contains things that may be changable.
+  # I also chose to include graduation percent, even though it isn't as
+  # changable as say spending, to allow users to investigate if test scores are
+  # correlated with other measures of success.
   
   tabPanel("School Qualities",
            fluidPage(
@@ -206,10 +219,8 @@ ui <- navbarPage(
                sidebarPanel(
                  selectInput("school",
                              "What school or district characteristic are you interested in?",
-                             choices = c("Per Pupil Spending" = "spending",
-                                         "Graduation Percent" = "grad_percent",
-                                         "Average Class Size" = "avg_class_size",
-                                         "Average Teacher Salary" = "average_salary"))
+                             choices = characteristic_choices),
+                 checkboxInput("schoolBestFit", "Add best fit line", FALSE)
                ),
                mainPanel(plotOutput("qualPlot")),
                position = "left"
@@ -227,8 +238,17 @@ ui <- navbarPage(
   
   tabPanel("Map", 
            fluidPage(
+             titlePanel("Schools in Massachusetts"),
              leafletOutput("map"),
-             textOutput('selected_schools')
+             p(paste("By mapping all schools in Massachusetts, we can ",
+                     "see the spatial distribution of schools and their ",
+                     "test scores. The color of a marker is the percent ",
+                     "students in a school who met or exceeded expectations ",
+                     "on the MCAS. We can see that schools in the greater ",
+                     "Boston suburbs tend to have the highest percent of ",
+                     "students doing well on the tests. Urban and rural ",
+                     "schools do less well. You can zoom in and out to ",
+                     "identify schools of interest."))
            )
   )
 )
@@ -314,11 +334,20 @@ server <- function(input, output) {
          distinct() %>% 
          ggplot(aes_string(x = input$dem, y = "percent_passing"))
      }
-     plot +
+     
+     full_plot <- plot +
        geom_point() +
        xlab("Percent of students in school of given demographic category") + 
        ylab("Percent of students Meeting or Exceeding Expectations") +
        ggtitle("Do demographics impact schools test scores?")
+     
+     if (input$demBestFit) {
+       full_plot <- full_plot +
+         geom_smooth(method = "lm", se = FALSE, na.rm = TRUE)
+     }
+     
+     full_plot
+     
    })
    
    ##################################################################
@@ -338,29 +367,60 @@ server <- function(input, output) {
      # I could have selected just one, but the additionally code complexity
      # did not seem worth it for marginal speed benefit.
      
+     # Charter schools in the dataset do not report spending or teacher salary
+     # so when one of these is the desired characteristic, I filter out these 
+     # schools before plotting.
+     
+     if (input$school == "spending" | input$school == "average_salary") {
+       school_data <- school_data %>% 
+         filter(!is.na(average_salary))
+     }
+     
      if (input$school == "spending"){
        modified_data <- school_data %>% 
          gather(key = "spending_type", value = "amount", 
                 in_district_per_pupil_spending, total_per_pupil_spending) %>% 
-         select(spending_type, amount, percent_passing)
+         select(spending_type, amount, percent_passing) %>% 
+         filter(!is.na(amount))
+       
        plot <- modified_data %>% 
          distinct() %>% 
          ggplot(aes(x = amount, y = percent_passing)) +
          facet_wrap(~spending_type)
      } else {
+       
+       # Only high schools have grad rates, so I filter out the 
+       # other schools when this is the selected input. I only 
+       # do this filtering when selected to avoid filtering out
+       # schools for which other information is available when
+       # other characteristics are selected
+       
+       if (input$school == "grad_percent") {
+         school_data <- school_data %>% 
+           filter(!is.na(grad_percent))
+       }
+      
+       # A few districts (Medford, Sharon)
        plot <- school_data %>% 
-         # TODO explain class size
-         filter(avg_class_size > 0) %>% 
          select(input$school, percent_passing) %>% 
          distinct() %>% 
          ggplot(aes_string(x = input$school, y = "percent_passing"))
      }
-     plot +
+    
+     full_plot <- plot +
        geom_point() +
-       geom_smooth(na.rm = TRUE, method = "lm", se = FALSE) +
-       xlab("School Characteristic") + 
+       scale_x_continuous(labels = scales::comma) +
+       theme(axis.text.x = element_text(angle = 50, hjust = 1)) +
+       xlab(names(characteristic_choices)[characteristic_choices == input$school]) + 
        ylab("Percent of students Meeting or Exceeding Expectations") +
-       ggtitle("Do demographics impact schools test scores?")
+       ggtitle("Which school characteristics are correlated with test scores?")
+     
+     if (input$schoolBestFit) {
+       full_plot <- full_plot +
+         geom_smooth(na.rm = TRUE, method = "lm", se = FALSE) 
+     }
+     
+     full_plot
    })
 
    ##################################################################
@@ -393,7 +453,10 @@ server <- function(input, output) {
        addProviderTiles("CartoDB") %>% 
        addCircleMarkers(radius = 1,
                         opacity = 0.5,
-                        label = ~NAME,
+                        label = ~paste(sep = "",
+                                      "Percent Passing: ",
+                                      number(percent_passing, accuracy = 1),
+                                      ", ", NAME),
                         color = ~pal(percent_passing)) %>% 
        addLegend(position = "bottomleft",
                  pal = pal,
