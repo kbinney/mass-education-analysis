@@ -196,11 +196,17 @@ ui <- navbarPage(
                                 choices = c("Race" = "race_percent",
                                             "Gender" = "gender_percent",
                                             "Economic Disadvantage" = "economically_disadvantaged_percent",
-                                            "Special Needs" = "swd_percent",
+                                            "Students with Disabilities" = "swd_percent",
                                             "English Language Learners" = "ell_students_percent")),
-                    checkboxInput("demBestFit", "Add best fit line", FALSE)
+                    checkboxInput("demBestFit", "Add best fit line", FALSE),
+                    helpText("Here, you can investigate relationships between ",
+                             "the demographics of students in a school. On the ",
+                             "y axis is the percent of students (across all grade ",
+                             "levels and test subjects) who met or exceeded ", 
+                             "expectations on the 2018 MCAS tests.")
                   ),
-                  mainPanel(plotOutput("demPlot")),
+                  mainPanel(plotOutput("demPlot"),
+                            textOutput("demText")),
                   position = "right"
             )
           )
@@ -220,9 +226,15 @@ ui <- navbarPage(
                  selectInput("school",
                              "What school or district characteristic are you interested in?",
                              choices = characteristic_choices),
-                 checkboxInput("schoolBestFit", "Add best fit line", FALSE)
+                 checkboxInput("schoolBestFit", "Add best fit line", FALSE),
+                 helpText("Salary and Per Pupil Expenditures are calculated ",
+                          "at a district rather than school level, but the plots ",
+                          "have one point per school, as there is school level ",
+                          "testing data. Charter Schools do not have spending  or teacher salary data.",
+                          "Only high schools are plotted for graduation rates.")
                ),
-               mainPanel(plotOutput("qualPlot")),
+               mainPanel(plotOutput("qualPlot"),
+                         textOutput("qualText")),
                position = "left"
              )
            )
@@ -350,6 +362,57 @@ server <- function(input, output) {
      
    })
    
+   output$demText <- renderText({
+     race_text <- paste("Increased percentages of hispanic and/or ",
+                        "African American students are correlated ",
+                        "with lower percentages of students meeting ",
+                        "or exceeding expecations on the 2018 MCAS. ",
+                        "In contrast, increased percentages of white ",
+                        "and/or Asian students are correlated with ",
+                        "higher percentages of students doing well.")
+     gender_text <- paste("Correlations with gender are highly influenced ",
+                          "by a few outlier schools with disproportionally ",
+                          "large male populations. These schools include ",
+                          "Springfield Public Day Elementary and Middle Schools ",
+                          "which are both small public schools supporting students ",
+                          "with mental health disabilities.",
+                          "The other schools include William McKinley in Boston, ",
+                          "which supports students with special needs, William R ",
+                          "Fallon in Lynn, also a school working especially with ",
+                          "students with additional education needs, and the school ",
+                          "for Exceptional Studies in Lawrence, with is also an ",
+                          "alternative educational program.")
+     economic_text <- paste("More economically disadvantaged ",
+                            "students in a school is correlated with lower percents ",
+                            "of students meeting or exceeding expectations on the MCAS. ",
+                            "A few standout schools: Pheonix Charter Academy, with ",
+                            "a 100% passing rate, and 43% disadvantaged students, ",
+                            "the O'Bryant School of Math and Science in Boston, with ",
+                            "almost 90% passing and 46% economically disadvantaged, ",
+                            "North Quincy High in Quincy, with almost 90% passing and ",
+                            "34% economically disadvantaged, and Quaboag Regional High ",
+                            "with 87% passing and 32% economically disadvantaged.")
+     disabilities_text <- paste("Schools with very high percentages of students ",
+                                "with disabilities generally do poorly on the MCAS. ",
+                                "The schools in the lower right corner of this graph ",
+                                "are all schools that offer some form of alternative ",
+                                "education: they may thus have an emphasis other than ",
+                                "standardized testing.")
+     ell_text <- paste("Schools with higher percentages with english language learners ",
+                       "generally have lower percentages of students doing well on the MCAS.",
+                       "Pheonix Charter Academy and the Boston International High School ",
+                       "go against this trend: Pheonix has 60% ELL students and a 100% pass ",
+                       "rate on the MCAS, and Boston has 92% ELL students and a 55% pass rate.")
+     text <- switch(input$dem,
+            "race_percent" = race_text,
+            "gender_percent" = gender_text,
+            "economically_disadvantaged_percent" = economic_text,
+            "swd_percent" = disabilities_text,
+            "ell_students_percent" = ell_text)
+     text
+     
+   })
+   
    ##################################################################
    #                                                                #
    # SCHOOL CHARACTERISTIC PLOTTING                                 #
@@ -428,6 +491,41 @@ server <- function(input, output) {
      }
      
      full_plot
+   })
+   
+   output$qualText <- renderText({
+     spending_text <- paste("Per pupil spending is calculated for both ",
+                            "in district and out of district expenditures. ",
+                            "Schools may have to pay to send students to ",
+                            "schools out of district if they cannot meet ",
+                            "the needs of the student, accounting for ",
+                            "differences between in-district and total ",
+                            "per pupil expenditures.")
+     grad_text <- paste("Passing MCAS scores are correlated with higher grad ",
+                        "rates, a good indication that MCAS are a reasonable ",
+                        "measure of student success. However, a number ",
+                        "of school have high graduation rates and low percents ",
+                        "of students meeting or exceeding expectations on the MCAS.",
+                        "This suggests that Massachusetts schools may not be ",
+                        "equipping all our graduates with the skills they will need ",
+                        "for life after college.")
+     class_text <- paste("The importance of class size is debated in education.",
+                        "Some believe smaller class sizes may improve educational ",
+                         "quality, but the others have pointed out that there are ",
+                         "challenges in achieving smaller class sizes that may ",
+                         "mitigate any benefits of smaller classes. These challenges ",
+                         "include procuring quality teachers, finding classroom space ",
+                         "and additional employee costs")
+     teacher_text <- paste("Teacher salaries in public schools are generally determined ",
+                           "by contracts with unions. Some advocates of charter schools ",
+                           "argue that the ability of charter schools, which generally ",
+                           "do not contract with unions, to pay teachersbased on performance ",
+                           "is very important to their success.")
+     switch(input$school,
+            "spending" = spending_text,
+            "grad_percent" = grad_text,
+            "avg_class_size" = class_text,
+            "average_salary" = teacher_text) 
    })
 
    ##################################################################
