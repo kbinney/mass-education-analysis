@@ -1,6 +1,4 @@
 library(tidyverse)
-library(leaflet)
-library(rgdal)
 library(readxl)
 library(janitor)
 library(knitr)
@@ -216,21 +214,6 @@ spending <- read_excel("final_project_data/new_data/PerPupilExpenditures.xlsx", 
          total_student_equiv,
          total_per_pupil_spending)
 
-# # Restraints includes both school and district codes, which will be great for joining all types of data
-# 
-# restraints <- read_excel("final_project_data/new_data/restraints.xlsx", skip = 1) %>% 
-#   clean_names() %>% 
-#   rename(students_restrained = number_of_students_restrained,
-#          total_restraints = total_number_of_restraints,
-#          total_injuries = total_number_of_injuries) %>% 
-#   
-#   # Many rows include a -, I assumed this meant NA 
-#   
-#   mutate(students_restrained = parse_number(students_restrained, na = c("", "NA", "-")),
-#          total_restraints = parse_number(total_restraints, na = c("", "NA", "-")),
-#          total_injuries = parse_number(total_injuries, na = c("", "NA", "-"))) %>% 
-#   select(everything(), -district_name)
-
 # Teacher salaries were collected as district level data. The salaries are
 # marked with $ signs, which need to be removed before we can convert to numbers
 
@@ -282,7 +265,6 @@ pops <- read_excel("final_project_data/new_data/selectedpopulations.xlsx", skip 
 # race_gender_enrollment: 1848 (school)
 # grad_rates: 384 (high school)
 # spending: 323 (district)
-# restraints: 911 (district, school)
 # pops: 1848 (school)
 # salaries: 324 (district)
 
@@ -298,9 +280,6 @@ school_data <- all_test_data %>%
   left_join(class_size_gender) %>% 
   left_join(race_gender_enrollment) %>% 
   left_join(grad_rates) %>% 
-  
-  #left_join(restraints) %>% 
-  
   left_join(pops) %>% 
   separate(school_code, into = c("district_code", "school_code"), sep = 4)
 
@@ -315,11 +294,6 @@ district_data <- salaries %>%
 
 all_data <- school_data %>% 
   left_join(district_data)
-
-# Save to be used in shiny app
-
-#write_rds(all_data, path = "MassEducation/joined_data")
-
 
 # For a lot of my plots, I'm intersted in everyone in a given school that meets
 # or exceeds expectations. Doing this analysis in my shiny app is slow, so I
@@ -356,18 +330,32 @@ passing_percents %>%
 # it became clear it made more sense to precreate the needed dataframe, save it,
 # and read it into shiny.
 
-dem_data <- all_data %>% 
-  gather(key = "race", value = "race_percent", african_american:multi_race_non_hispanic) %>% 
-  gather(key = "gender", value = "gender_percent", males:females) %>% 
-  mutate(economically_disadvantaged_percent = 100 * economically_disadvantaged / total_students,
-         ell_students_percent = 100 * ell_students / total_students,
-         swd_percent = 100 * swd / total_students) %>% 
-  select(school_name, district_code, school_code, race, race_percent, gender, gender_percent, economically_disadvantaged_percent,
-         ell_students_percent, swd_percent) %>% 
+dem_data <- all_data %>%
+  gather(key = "race",
+         value = "race_percent",
+         african_american:multi_race_non_hispanic) %>%
+  gather(key = "gender", value = "gender_percent", males:females) %>%
+  mutate(
+    economically_disadvantaged_percent = 100 * economically_disadvantaged / total_students,
+    ell_students_percent = 100 * ell_students / total_students,
+    swd_percent = 100 * swd / total_students
+  ) %>%
+  select(
+    school_name,
+    district_code,
+    school_code,
+    race,
+    race_percent,
+    gender,
+    gender_percent,
+    economically_disadvantaged_percent,
+    ell_students_percent,
+    swd_percent
+  ) %>%
   distinct()
 
-# I use this data alongside testing data, so join the testing data with this demographic data before
-# saving into an rds file to use in my shiny app.
+# I use this data alongside testing data, so join the testing data with this
+# demographic data before saving into an rds file to use in my shiny app.
 
 full_demographics_data <- passing_percents %>% 
   left_join(dem_data, by = c("school_code", "district_code")) 

@@ -8,18 +8,11 @@
 #
 
 library(shiny)
-library(tidyverse)
 library(leaflet)
-library(leaflet.extras)
 library(rgdal)
-library(readxl)
-library(janitor)
-library(knitr)
 library(shinythemes)
-library(plotly)
-library(ggrepel)
-library(sp)
 library(scales)
+library(tidyverse)
 
 # One tab is a map. To visualize the map, we need to read in the shape file and then
 # convert it to R readable format. Furthermore, we join that data with testing data
@@ -101,7 +94,7 @@ ui <- navbarPage(
                     "students are assigned to a level of achievement in addition to getting a ",
                     "numeric score. From best to worst, the levels are",
                     "Exceeds Expectations, Meets Expectations, Partially Meets ",
-                    "Expecations and Not Meeting Expectations. The old system, under which High ", 
+                    "Expectations and Not Meeting Expectations. The old system, under which High ", 
                     "School tests were administed, also gives both scores and levels. Students were classified ", 
                     "as Advanced, Proficient, Needs Improvement, and Warning and Failing. In this app ",
                     "the old scores were mapped to the new ones. Schools report percentages of students ",
@@ -220,7 +213,8 @@ ui <- navbarPage(
                              " ie the state standardized test. ", 
                              " The state divides student scores into four ",
                              " achievement levels, and reports the percentage ",
-                             " of students at each level in a given school.")
+                             " of students at each level in a given school.",
+                             " Read more about the levels in the home tab.")
                   ),
                   mainPanel(plotOutput("demPlot"),
                             textOutput("demText")),
@@ -256,7 +250,8 @@ ui <- navbarPage(
                           "ie the state standardized test. ", 
                           "The state divides student scores into four ",
                           "achievement levels, and reports the percentage ",
-                          "of students at each level in a given school.")
+                          "of students at each level in a given school. ",
+                          "Read more about the levels in the home tab.")
                ),
                mainPanel(plotOutput("qualPlot"),
                          textOutput("qualText")),
@@ -285,12 +280,20 @@ ui <- navbarPage(
                      "see the spatial distribution of schools and their ",
                      "test scores. The color of a marker is the percent ",
                      "students in a school who met or exceeded expectations ",
-                     "on the MCAS. The MCAS are the Massachhusetts ",
+                     "on the 2018 MCAS.",
+                     "The MCAS are the Massachhusetts ",
                      "Comprehensive Assessment System, ",
                      "the state standardized test. ", 
                      "The state divides student scores into four ",
                      "achievement levels, and reports the percentage ",
                      "of students at each level in a given school. ",
+                     "Read more about the levels in the home tab.",
+                     "'Passing' refers to students ",
+                     "at the level of 'Met Expectations' ",
+                     "or 'Exceeded Expectations'. ",
+                     "Students generally need to be at ",
+                     "one of these levels to graduate from high school, ",
+                     "hence the 'passing' designation. ",
                      "We can see that schools in the greater ",
                      "Boston suburbs tend to have the highest percent of ",
                      "students doing well on the tests. Urban and rural ",
@@ -612,7 +615,7 @@ server <- function(input, output) {
        addLegend(position = "bottomleft",
                  pal = pal,
                  values = c(0, 100),
-                 title = "Students passing MCAS") %>% 
+                 title = "Percent of Students passing MCAS") %>% 
        
        # It is easy on leaflet to zoom or move outside the 
        # interesting area. Setting the bounds around MA
