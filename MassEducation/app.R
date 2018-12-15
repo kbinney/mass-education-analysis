@@ -1,12 +1,3 @@
-#
-# This is a Shiny web application. You can run the application by clicking
-# the 'Run App' button above.
-#
-# Find out more about building applications with Shiny here:
-#
-#    http://shiny.rstudio.com/
-#
-
 library(shiny)
 library(leaflet)
 library(rgdal)
@@ -34,9 +25,6 @@ characteristic_choices <-
   "Graduation Percent" = "grad_percent",
   "Average Class Size" = "avg_class_size",
   "Average Teacher Salary" = "average_salary")
-# characteristic_titles <-
-#   c("Teachers salaries may have a very slight positive correlation with test scores" = "average_salary",
-#     "Some schools have high graduation rates, despite low passing rates on the MCAS" = "grad_percent")
 
 # I cleaned the data into 3 data frames ready for use here. 
 # joined data contains all the raw information, including
@@ -49,7 +37,6 @@ characteristic_choices <-
 # correlations between demographics and test scores. It has already
 # joined the demographic information and the passing percents.
 
-# all_data <- read_rds("joined_data")
 test_data <- read_rds("all_test_data.rds")
 passing_percents <- read_rds("passing_percents.rds")
 dem_data <- read_rds("full_demographic_data.rds")
