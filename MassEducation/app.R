@@ -148,7 +148,6 @@ ui <- navbarPage(
                              "convert the old standards to the new labels for ",
                              "ease of visibility. Read more about the change in testing ",
                              " standards on the home page.")
-                    
              ),
              mainPanel(
                plotOutput("gradePlot"),
