@@ -7,15 +7,14 @@ library(knitr)
 library(fs)
 
 # Downloading data from the massachusetts department of education is a bit
-# tricky. To get different grade levels, I ahd to download different files.
-# Luckily these files are mostly formatted the same, so I can read them in with
-# a map. The column names aren't very informative, but research showed they were
-# the different test levels, so I looked up the names for each abbreviation and
-# renamed the columns.
+# tricky. To get different grade levels for test scores, I had to download
+# different files. Luckily these files are mostly formatted the same, so I can
+# read them in with a map. The column names aren't very informative, but the
+# website explained they were the different test levels, so I looked up the
+# names for each abbreviation and renamed the columns.
 
 filenames <- dir_ls("final_project_data/new_data/") %>% 
   str_subset("mcas-grade")
-
 
 mcas_data <-
   map_dfr(filenames, read_xlsx, skip = 1, .id = "file_index") %>%
@@ -32,9 +31,9 @@ mcas_data <-
     "file_index" = file_index
   ) %>%
   
-  # For some reason, map_dfr with .id is giving list index rather than name
-  # so we manually convert to path name. We can then parse out the grade from
-  # the file name
+  # For some reason, map_dfr with .id is giving list indexes rather than file
+  # names so we manually convert to path name. We can then parse out the grade
+  # from the file name.
   
   mutate(
     file_index = parse_number(file_index),
@@ -43,7 +42,8 @@ mcas_data <-
     grade = str_remove(grade, ".xlsx")
   ) %>%
   
-  # Most of the columns were assumed characters, so we switch to parse as ints
+  # Most of the columns were assumed to be characters characters, so we need to
+  # switch to them parse as numbers
   
   mutate(
     exceeds = parse_number(exceeds),
@@ -53,17 +53,18 @@ mcas_data <-
     num_students_testing = parse_number(num_students_testing)
   ) %>%
   
-  # We no longer need the index or source
+  # The index and source were just used to identify the grade levels, so can be
+  # omitted from future data analysis.
   
   select(everything(),-file_index,-source)
 
-# High school science and 10th grade mcas data files have a different format, so
-# we read in separately before joining
+# The high school science and 10th grade MCAS (standardized test) data files
+# have a different format, so we read in separately before joining.
 
 special_filenames <- c("final_project_data/new_data/grade-10-reg.xlsx",
                        "final_project_data/new_data/hs-science.xlsx")  
 
-# These files ave different format partially because the tests use an old
+# These files are a different format partially because the tests use an old
 # scoring system. I convert for joining, and will note this conversion on my
 # app. I also use the file name to figure out the year of students taking the
 # test. The science test is taken by high schoolers in various years.
@@ -90,35 +91,45 @@ mcas_old_data <-
     grade = case_when(grade == "grade-10-reg" ~ "10",
                       TRUE ~ "HS")
   ) %>%
-  
-  # We no longer need the index or source
-  
   select(everything(), -file_index, -source)
 
-# We join old and new data into a single data frame. The old and new mcas have
-# different notation for test types, so I rename some of the subject variables
+# We join all testing data into a single data frame. The old and new mcas have
+# different notation for test types, so I rename some of the subject variables.
 
 all_test_data <- bind_rows(mcas_data, mcas_old_data) %>% 
   mutate(subject = case_when(subject == "ELA" ~ "ENGLISH LANGUAGE ARTS",
                              subject == "MATH" ~ "MATHEMATICS",
                              TRUE ~ subject)) %>% 
   
-  # We would like to switch acheivement level to be an value rather than columns
+  # We would like to switch acheivement level to be an observation instead of a
+  # variable so that we can easily group by achievement level
   
   gather(key = "achievement_level", "students_at_level", exceeds:not_meeting)
   
+
+# I use just the test data in one tab of my app. Initially, I joined the test
+# data to the rest of the demographics data, but that led to a very large data
+# frame that slowed down the app. I thus save the test data alone to be read in
+# by the app.
 
 all_test_data %>% 
   write_rds("MassEducation/all_test_data.rds")
 
 # After getting all the data for MCAS by school and grade level, we read in
-# other information about schools. Utimately, we will join this into a single
-# data frame
+# other information about schools. This information includes various
+# demographics (race, gender, english as a second language, students with
+# special needs) and school or district level characteristics, like spending,
+# class size, and teacher salaries
 
-# Medford and Sharon school districts and the Greenfield Commonwealth Virtual District
-# have all 0s for each input. They appear not to have accurately provided this information,
-# so information relating to these schools is filtered out of the dataset. These are the
-# only districts with average class size of 0, so I use that to do my filtering. 
+# The first data frame contains details of class sizes, gender percents, english
+# language learners, students with disabolities and students who are
+# economically disadvantaged.
+
+# The Medford and Sharon school districts and the Greenfield Commonwealth Virtual
+# District have all 0s for each input. They appear not to have accurately
+# provided this information, so information relating to these schools is filtered
+# out of the dataset. These are the only districts with average class size of 0,
+# so I use that to do my filtering.
 
 class_size_gender <- read_excel("final_project_data/new_data/ClassSizebyGenPopulation.xlsx", skip = 1) %>% 
   clean_names() %>% 
@@ -141,6 +152,9 @@ class_size_gender <- read_excel("final_project_data/new_data/ClassSizebyGenPopul
          ec_disad_percent) %>% 
   filter(avg_class_size > 0)
 
+# I also looked at enrollment in school across standard racial groups. This was
+# already nicely formatted.
+
 race_gender_enrollment <- read_excel("final_project_data/new_data/enrollmentbyracegender-school.xlsx", skip = 3, trim_ws = TRUE) %>% 
   clean_names() %>% 
   rename(school_name = school, school_code = org_code) %>% 
@@ -149,6 +163,9 @@ race_gender_enrollment <- read_excel("final_project_data/new_data/enrollmentbyra
   
   mutate(school_code = str_trim(school_code)) %>% 
   select(everything(), -school_name)
+
+# High schools have graudation rates, an interesting metric to compare with mcas
+# testing data.
 
 grad_rates <- read_excel("final_project_data/new_data/gradrates.xlsx", skip = 1) %>% 
   clean_names() %>% 
@@ -172,11 +189,13 @@ grad_rates <- read_excel("final_project_data/new_data/gradrates.xlsx", skip = 1)
          drop_out_percent,
          excluded_percent)
 
-# Spending is by district rather than school, which needs to be kep in mind when
-# joining to school level data. Money columns are stored with $ signs, which
-# need to be removed before we can parse teh column as a number. Cleaning names
-# here helps some, but many of the columns are not clear, so I rename and remove
-# an extra column.
+# Spending is by district rather than school, which needs to be kept in mind
+# when joining to school level data. Money columns are stored with $ signs,
+# which need to be removed before we can parse the column as a number. Cleaning
+# names here helps some, but many of the columns are not clear, so I rename them
+# and remove an extra column that was empty. Student_equiv refers to the number
+# of students who were in school full time, and accounts for students who arrive
+# or leave partway through the year.
 
 spending <- read_excel("final_project_data/new_data/PerPupilExpenditures.xlsx", skip = 1) %>% 
   clean_names() %>% 
@@ -197,20 +216,23 @@ spending <- read_excel("final_project_data/new_data/PerPupilExpenditures.xlsx", 
          total_student_equiv,
          total_per_pupil_spending)
 
-# Restraints includes both school and district codes, which will be great for joining all types of data
+# # Restraints includes both school and district codes, which will be great for joining all types of data
+# 
+# restraints <- read_excel("final_project_data/new_data/restraints.xlsx", skip = 1) %>% 
+#   clean_names() %>% 
+#   rename(students_restrained = number_of_students_restrained,
+#          total_restraints = total_number_of_restraints,
+#          total_injuries = total_number_of_injuries) %>% 
+#   
+#   # Many rows include a -, I assumed this meant NA 
+#   
+#   mutate(students_restrained = parse_number(students_restrained, na = c("", "NA", "-")),
+#          total_restraints = parse_number(total_restraints, na = c("", "NA", "-")),
+#          total_injuries = parse_number(total_injuries, na = c("", "NA", "-"))) %>% 
+#   select(everything(), -district_name)
 
-restraints <- read_excel("final_project_data/new_data/restraints.xlsx", skip = 1) %>% 
-  clean_names() %>% 
-  rename(students_restrained = number_of_students_restrained,
-         total_restraints = total_number_of_restraints,
-         total_injuries = total_number_of_injuries) %>% 
-  
-  # Many rows include a -, I assumed this meant NA 
-  
-  mutate(students_restrained = parse_number(students_restrained, na = c("", "NA", "-")),
-         total_restraints = parse_number(total_restraints, na = c("", "NA", "-")),
-         total_injuries = parse_number(total_injuries, na = c("", "NA", "-"))) %>% 
-  select(everything(), -district_name)
+# Teacher salaries were collected as district level data. The salaries are
+# marked with $ signs, which need to be removed before we can convert to numbers
 
 salaries <- read_excel("final_project_data/new_data/TeacherSalaries.xlsx", skip = 1) %>% 
   clean_names() %>% 
@@ -218,23 +240,24 @@ salaries <- read_excel("final_project_data/new_data/TeacherSalaries.xlsx", skip 
          average_salary = parse_number(str_replace(average_salary, "$", "")),
          fte_count = parse_number(fte_count))
 
+# Though the class size data file includes some population percentages, selected
+# populations contains more distinct populations
+
 pops <- read_excel("final_project_data/new_data/selectedpopulations.xlsx", skip = 3) %>% 
   clean_names() %>% 
   
-  # The data spreadsheet has one row with section names, and one with % vs. #
-  # I keep just the numbers, except use ell_percent to determine total students
+  # The data spreadsheet has one row with section names, and one with % vs. # I
+  # keep just the numbers, except use high_needs_percent to determine total
+  # students, useful for future ability to group by district and still get
+  # accurate percents. I need to remove the row of % and #
   
-  transmute(#school_name = school,
-         school_code = orgcode,
+  transmute(school_code = orgcode,
          non_native_english = first_language_not_english,
          ell_students = english_language_learner,
          swd = students_with_disabilities,
          high_needs,
          high_needs_percent = x_4,
          economically_disadvantaged) %>% 
-  
-  # We need to remove the row of % and #
-  
   slice(2:n()) %>% 
   mutate(non_native_english = parse_number(non_native_english),
          ell_students = parse_number(ell_students),
@@ -243,11 +266,17 @@ pops <- read_excel("final_project_data/new_data/selectedpopulations.xlsx", skip 
          high_needs_percent = parse_number(high_needs_percent),
          economically_disadvantaged = parse_number(economically_disadvantaged)) %>% 
   
-  # Finally, we used ell_percent and ell_students to determine the total number of students
+  # All schools have a high needs column for both number and percent. I use
+  # these two columns to calculate the number of students in a school
   
   mutate(total_students = high_needs / (high_needs_percent / 100))
 
-# data frames are different sizes:
+# After collecting all the data from various files, I want to join into a single
+# data frame. The files either have a district or school code that is consistent
+# accross files. Below, see the number of observations in each data set and
+# whether it will have school codes or district codes. This information is
+# needed to appropriately join the data frames.
+
 # MCAS: 1638 unique schools (school)
 # class_size_gender: 1850 (school)
 # race_gender_enrollment: 1848 (school)
@@ -256,9 +285,14 @@ pops <- read_excel("final_project_data/new_data/selectedpopulations.xlsx", skip 
 # restraints: 911 (district, school)
 # pops: 1848 (school)
 # salaries: 324 (district)
-# After reading in all demographic data, I want to join it into one large data frame with the mcas data
-# Some data frames are by school and some by district. I start with joining all schools and all districts
-# Initially, I chose to join all this data into a single data frame
+
+# After reading in all demographic data, I want to join it into one large data
+# frame with the mcas data Some data frames are by school and some by district.
+# I start with joining all schools and all districts. Initially, I chose to join
+# all this data into a single data frame and then partitioned it in the shiny
+# app. However, Shiny wasn't able to deal with a data set this big, so after
+# joining I partitioned the data by which tab in my app I use it in and saved
+# each tab's data into a separate data frame.
 
 school_data <- all_test_data %>% 
   left_join(class_size_gender) %>% 
@@ -270,23 +304,27 @@ school_data <- all_test_data %>%
   left_join(pops) %>% 
   separate(school_code, into = c("district_code", "school_code"), sep = 4)
 
+
+# The Department of Education website says that the "school code's" first 4
+# digits is the district code and the second 4 digits are a school level code. I
+# thus get the district code that's actually district representative, even
+# though it is stored as 8 digits - the last 4 are all 0s.
 district_data <- salaries %>% 
   left_join(spending) %>% 
   mutate(district_code = str_sub(district_code, 1, 4))
-
-# DoE says that the school code's first 4 digits is the district code. Let's see if that works.
 
 all_data <- school_data %>% 
   left_join(district_data)
 
 # Save to be used in shiny app
 
-write_rds(all_data, path = "MassEducation/joined_data")
+#write_rds(all_data, path = "MassEducation/joined_data")
 
 
 # For a lot of my plots, I'm intersted in everyone in a given school that meets
 # or exceeds expectations. Doing this analysis in my shiny app is slow, so I
-# create a new data frame with just this information.
+# create a new data frame with just this information (ie percents of students
+# "passing" - meeting or exceeding expectations - in a given school)
 
 passing_percents <- all_data %>% 
   
@@ -299,8 +337,10 @@ passing_percents <- all_data %>%
   group_by(school_name, district_code, school_code) %>% 
   summarize(percent_passing = 100 * (sum(exceeds) + sum(met)) / sum(num_students_testing)) %>% 
   
-  # I want to join this data with my shapefile data in the shiny app to show this data visually. 
-  # The shape file has a single school id, so I add that column back in here
+  # I want to join this data with my shapefile data in the shiny app to show
+  # this data visually. The shape file has a single school id, so I add that
+  # column back in here (ie merge the district and school parts of the back into
+  # 8 digit string)
   
   mutate(SCHID = paste0(district_code, school_code)) %>% 
   ungroup() 
@@ -308,11 +348,13 @@ passing_percents <- all_data %>%
 passing_percents %>% 
   write_rds(path = "MassEducation/passing_percents.rds")
   
-# Additionally, some of the demographic data requires reformatting before it can be used as desired in the
-# Shiny App. In particular, some rows need to be converted to percents, and different race and gender
-# categories are already in percent but need to be gathered into a single column. Originally I did this 
-# in my shiny app, but after finalizing what characteristics I was interested in displaying it became
-# clear it made more sense to precreate the needed dataframe, save it, and read it into shiny
+# Some of the demographic data requires reformatting before it can be used as
+# desired in the Shiny App. In particular, some rows need to be converted to
+# percents, and different race and gender categories are already in percents but
+# need to be gathered into a single column. Originally I did this in my shiny
+# app, but after finalizing what characteristics I was interested in displaying
+# it became clear it made more sense to precreate the needed dataframe, save it,
+# and read it into shiny.
 
 dem_data <- all_data %>% 
   gather(key = "race", value = "race_percent", african_american:multi_race_non_hispanic) %>% 
@@ -324,17 +366,20 @@ dem_data <- all_data %>%
          ell_students_percent, swd_percent) %>% 
   distinct()
 
-# I use this data alongside testing data, so prejoin the testing data with this demographic data before
-# saving into an rds file to use in my shiny app
+# I use this data alongside testing data, so join the testing data with this demographic data before
+# saving into an rds file to use in my shiny app.
 
 full_demographics_data <- passing_percents %>% 
   left_join(dem_data, by = c("school_code", "district_code")) 
 full_demographics_data %>% 
   write_rds(path = "MassEducation/full_demographic_data.rds")
 
-# My second to last shiny tab contains information regarding passing percents and school level
-# characteristics. I chose to include spending, teacher salary, average class size, and grad percent.
-# Other characterics were either related (total spending) or not well formated (restraints)
+# My second to last shiny tab contains information regarding passing percents
+# and school level characteristics. I chose to include spending, teacher salary,
+# average class size, and grad percent. Other columns from my files were mostly
+# redundant, like looking at average salary and also total money spent on
+# salaries and the total number of teachers. After selecting just this data, I
+# join it with the passing data and save the file to be used in the shiny app.
 
 school_data <- all_data %>% 
   select(school_name, school_code, district_code, in_district_per_pupil_spending, 

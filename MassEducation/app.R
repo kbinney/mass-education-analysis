@@ -32,17 +32,18 @@ schools_transformed <- spTransform(schools, CRS("+proj=longlat +ellps=GRS80"))
 
 bounding_box <- c(-74.1054,41.1389,-69.6605,43.0038)
 
-# School characteristics choices. Labeled separately 
+# School characteristics choices are labeled separately 
 # rather than just in input so I can use the label
-# choices as names on my plot as well as plot selections
+# choices as names in my plot as well as plot selections.
+
 characteristic_choices <- 
   c("Per Pupil Spending" = "spending",
   "Graduation Percent" = "grad_percent",
   "Average Class Size" = "avg_class_size",
   "Average Teacher Salary" = "average_salary")
-characteristic_titles <-
-  c("Teachers salaries may have a very slight positive correlation with test scores" = "average_salary",
-    "Some schools have high graduation rates, despite low passing rates on the MCAS" = "grad_percent")
+# characteristic_titles <-
+#   c("Teachers salaries may have a very slight positive correlation with test scores" = "average_salary",
+#     "Some schools have high graduation rates, despite low passing rates on the MCAS" = "grad_percent")
 
 # I cleaned the data into 3 data frames ready for use here. 
 # joined data contains all the raw information, including
@@ -69,8 +70,8 @@ ui <- navbarPage(
   "Massachusetts Schools",
   theme = shinytheme("yeti"),
   
-  # The default panel contains a summary of the data source, interesting findings, and a
-  # guide to the app
+  # The default panel contains a summary of the data source, interesting
+  # findings, and a guide to the app.
   
   tabPanel("Home",
            fluidPage(
@@ -96,30 +97,33 @@ ui <- navbarPage(
               href = "https://en.wikipedia.org/wiki/Massachusetts_Comprehensive_Assessment_System"),
             p(paste("\nIn recent years, Massachusetts has realized MCAS were not meeting state goals. ",
                     "The state is in the process of switching to new standards. In this app, tests ",
-                    "before High School were administered under the old system. These tests are scored ",
-                    "with four levels: Exceeds Expectations, Meets Expectations, Partially Meets ",
+                    "before High School were administered under the old system. In the new tests,", 
+                    "students are assigned to a level of achievement in addition to getting a ",
+                    "numeric score. From best to worst, the levels are",
+                    "Exceeds Expectations, Meets Expectations, Partially Meets ",
                     "Expecations and Not Meeting Expectations. The old system, under which High ", 
-                    "School tests were administed, used different scoring. Students were classified ", 
+                    "School tests were administed, also gives both scores and levels. Students were classified ", 
                     "as Advanced, Proficient, Needs Improvement, and Warning and Failing. In this app ",
-                    "the old scores were mapped to the new ones.")),
+                    "the old scores were mapped to the new ones. Schools report percentages of students ",
+                    "at each achievement level rather than the raw scores of enrolled students.")),
             a("Learn more about the new MCAS here", 
               href = "http://www.doe.mass.edu/mcas/nextgen/"),
             h2("Data Source"),
             p("All data used in this project was collected from the Massachussetts Department of ", 
-              "Education. Test scores are from Spring 2018 testing. School demographics information ", 
+              "Education. Test scores are from Spring 2018 testing. Other information  ", 
               "is from the 2016-2017 school year, as this is the most recent available data."),
-            a("See the data for yourself here", 
+            a("Access the Department of Education data reports here.", 
               href = "http://profiles.doe.mass.edu/state_report/")
-
         )
   ),
   
-  # The next panel allows users to see a high level overview of how well students
-  # perform on these tests. Users can subset the data by grade and test scores. I
-  # chose to visualize the data with a histogram to allow others to see generally 
-  # how schools across the state are doing - do lots of schools have high percentages
-  # of students doing well? Doing poorly? Do more schools do better on math or language arts?
-  # Does that differ across grades? I think a histogram is a good way to answer these questions
+  # The next panel allows users to see a high level overview of how well
+  # students perform on these tests. Users can subset the data by grade and test
+  # scores. I chose to visualize the data with a histogram to allow others to
+  # see generally how schools across the state are doing - do lots of schools
+  # have high percentages of students doing well? Doing poorly? Do more schools
+  # do better on math or language arts? Does that differ across grades? I think
+  # a histogram is a good way to answer these questions
   
   tabPanel("Basic Scores",
            fluidPage(
@@ -145,19 +149,25 @@ ui <- navbarPage(
                                 selected = "met",
                                 multiple = TRUE),
                     helpText("This histogram looks at scores on the 2018 ",
-                             "MCAS test. Note, students only have to take ",
+                             "MCAS (Massachhusetts Comprehensive Assessment System) ",
+                             "test, ie the state standardized test. ", 
+                             "The state divides student scores into four ",
+                             "achievement levels, and reports the percentage ",
+                             " of students at each level in a given school. ",
+                             "Note, students only have to take ",
                              "and pass one science test, so the total number ",
-                             "of schools taking each test may be lower than ",
+                             "of schools taking a given science test may be lower than ",
                              "for other grades or subjects. Students must meet ",
                              "testing standards to graduate from high school. ",
-                             "Students must mee or exceed expectations on ELA, ",
+                             "Students must meet or exceed expectations on ELA, ",
                              "Math, and a Science test, or partially ",
                              "meet expectations and complete a school level ",
                              "improvement plan. Note, MA is currently switching ",
                              "to new standards for MCAS testing. The High School ",
                              "tests are still under the old system. In this app, we ",
                              "convert the old standards to the new labels for ",
-                             "ease of visibility. Read more on home page.")
+                             "ease of visibility. Read more about the change in testing ",
+                             " standards on the home page.")
                     
              ),
              mainPanel(
@@ -172,19 +182,21 @@ ui <- navbarPage(
           )
   ),
   
-  # After seeing schools in the aggregate, visitors to my shiny app can start to 
-  # pin down demographic characteristics associated with performance on test scores. 
-  # I was hoping initially to be able to separate school level information by demographic
-  # (ie how well are students in different racial groups doing at the same school). This
-  # information proved very difficult to get from the Massachusetts department of education. 
-  # It was much easier to get a schools test scores, and independently, its demographic 
-  # information. I decided these relationships were still interesting. In this tab, 
-  # I visualize demographics and test scores in a 2D scatter plot, seeing if percent of 
-  # in a demographic category demostrate correlation with higher or lower passing test 
-  # scores. I considered letting users choose which test types or scores or grades they
-  # were interested in, but found this added significant complexity and time to the app. 
-  # Thus, I choose to precalculate percent of students meeting or exceeding expectations
-  # accross all grades and test subjects. 
+  # After seeing schools in the aggregate, visitors to my shiny app can start to
+  # pin down demographic characteristics associated with performance on test
+  # scores. I was hoping initially to be able to separate school level
+  # information by demographic (ie how well are students in different racial
+  # groups doing at the same school). This information proved very difficult to
+  # get from the Massachusetts Department of Education. It was much easier to
+  # get a school's test scores, and independently, its demographic information.
+  # I decided these relationships were still interesting. In this tab, I
+  # visualize demographics and test scores in a 2D scatter plot, seeing if the
+  # percent of students in a demographic category are correlated with higher or
+  # lower passing test scores. I considered letting users choose which test
+  # types or scores or grades they were interested in, but found this added
+  # significant complexity and time to the app. Thus, I choose to precalculate
+  # percent of students meeting or exceeding expectations accross all grades and
+  # test subjects and compared demographics with this "passing percent"
   
   tabPanel("Demographics",
            fluidPage(
@@ -203,7 +215,12 @@ ui <- navbarPage(
                              "the demographics of students in a school. On the ",
                              "y axis is the percent of students (across all grade ",
                              "levels and test subjects) who met or exceeded ", 
-                             "expectations on the 2018 MCAS tests.")
+                             "expectations on the 2018 MCAS tests.",
+                             "The MCAS are the Massachhusetts Comprehensive Assessment System, ",
+                             " ie the state standardized test. ", 
+                             " The state divides student scores into four ",
+                             " achievement levels, and reports the percentage ",
+                             " of students at each level in a given school.")
                   ),
                   mainPanel(plotOutput("demPlot"),
                             textOutput("demText")),
@@ -230,8 +247,16 @@ ui <- navbarPage(
                  helpText("Salary and Per Pupil Expenditures are calculated ",
                           "at a district rather than school level, but the plots ",
                           "have one point per school, as there is school level ",
-                          "testing data. Charter Schools do not have spending  or teacher salary data.",
-                          "Only high schools are plotted for graduation rates.")
+                          "testing data. Charter Schools do not have spending  or teacher salary data. ",
+                          "Only high schools are plotted for graduation rates. ",
+                          "On the y axis of this chart is the percent of students ",
+                          "in a given school who met or exceeded ", 
+                          "expectations on the 2018 MCAS tests. ",
+                          "The MCAS are the Massachhusetts Comprehensive Assessment System, ",
+                          "ie the state standardized test. ", 
+                          "The state divides student scores into four ",
+                          "achievement levels, and reports the percentage ",
+                          "of students at each level in a given school.")
                ),
                mainPanel(plotOutput("qualPlot"),
                          textOutput("qualText")),
@@ -240,13 +265,17 @@ ui <- navbarPage(
            )
   ),
   
-  # My final tab is a map that contains points for all schools included in the MCAS data.
-  # Schools are colored by their passing rates on MCAS testing, creating a spatial visualization
-  # of one measure of school quality. Initally, I wanted to allow users to select regions on 
-  # the map and then show data related to the selected schools. However, it turns out that
-  # region selection on leaflet maps in shiny is basically not supported. The workarounds
-  # I tried ended up making the map look significantly worse, and did not add much interesting
-  # information.
+  # My final tab is a map that contains points for all schools included in the
+  # MCAS data. Schools are colored by their passing rates on MCAS testing,
+  # creating a spatial visualization of one measure of school quality. Initally,
+  # I wanted to allow users to select regions on the map and then show data
+  # related to the selected schools. However, it turns out that region selection
+  # on leaflet maps in shiny is not supported. The workarounds I tried ended up
+  # making the map look significantly worse, and did not add much interesting
+  # information. Instead, I visualized the spatial distribution of schools'
+  # performance on the MCAS tests. Each school is plotted, and the color of that
+  # marker is dependent on the percentage of students meeting or exceeding
+  # expectations on the 2018 MCAS tests.
   
   tabPanel("Map", 
            fluidPage(
@@ -256,7 +285,13 @@ ui <- navbarPage(
                      "see the spatial distribution of schools and their ",
                      "test scores. The color of a marker is the percent ",
                      "students in a school who met or exceeded expectations ",
-                     "on the MCAS. We can see that schools in the greater ",
+                     "on the MCAS. The MCAS are the Massachhusetts ",
+                     "Comprehensive Assessment System, ",
+                     "the state standardized test. ", 
+                     "The state divides student scores into four ",
+                     "achievement levels, and reports the percentage ",
+                     "of students at each level in a given school. ",
+                     "We can see that schools in the greater ",
                      "Boston suburbs tend to have the highest percent of ",
                      "students doing well on the tests. Urban and rural ",
                      "schools do less well. You can zoom in and out to ",
@@ -265,9 +300,9 @@ ui <- navbarPage(
   )
 )
 
-# Define server function logic to create visualizations and captions for
-# the shiny app using inputs from the UI. Each tab's server logic
-# is titled to divide the code more clearly.
+# Define server function logic to create visualizations and captions for the
+# shiny app using inputs from the UI. Each tab's server logic is titled to
+# divide the code more clearly.
 
 server <- function(input, output) {
   
@@ -276,13 +311,13 @@ server <- function(input, output) {
   # BASIC SCORES PLOTTING                                          #
   #                                                                #
   ##################################################################
-  # Collect data to examine and use in plot output. We filter given
-  # the user's input. Filtering can be direct because both grade 
-  # and achievement level are already strings. 
-  # We take the inputs (grades and levels) to get the percent of students
-  # at that grade and level in a particular school. We make sure to not 
-  # summarize over different types of tests, so visualization can be
-  # colored by type of test
+  
+  # Collect data to examine and use in plot output. We filter given the user's
+  # input. Filtering can be direct because both grade and achievement level are
+  # already strings. We take the inputs (grades and levels) to get the percent
+  # of students at that grade and level in a particular school. We make sure to
+  # not summarize over different types of tests, so visualization can be colored
+  # by type of test
   
    filtered_data <- reactive({test_data %>% 
        filter(grade %in% input$grade,
@@ -320,16 +355,13 @@ server <- function(input, output) {
    # DEMOGRAPHICS PLOTTING                                          #
    #                                                                #
    ##################################################################
+   
    output$demPlot <- renderPlot({
      
      # There are a lot of repeated rows because of the number of different
      # demographic categories intially in the dataset. However, these rows
-     # are mostly repeated for the sake of the choosen columns. Distinct 
-     # eliminates these repeated rows, making the dataset faster to plot. I 
-     # choose to also keep both gender and race if one of them is selected
-     # in order to allow faceting by these characteristics. Alternatively,
-     # I could have selected just one, but the additionally code complexity
-     # did not seem worth it for marginal speed benefit.
+     # are mostly repeated when considering chosen columns. Distinct 
+     # eliminates these repeated rows, making the dataset faster to plot. 
      
      if (input$dem == "race_percent" | input$dem == "gender_percent"){
          fill = switch(input$dem,
@@ -362,6 +394,9 @@ server <- function(input, output) {
      
    })
    
+   # I created distinct explanatory texts for each graph charted. Switching by
+   # chosen demogrpahic matches the explanatory text with the correct chart.
+    
    output$demText <- renderText({
      race_text <- paste("Increased percentages of hispanic and/or ",
                         "African American students are correlated ",
@@ -452,11 +487,10 @@ server <- function(input, output) {
          facet_wrap(~spending_type)
      } else {
        
-       # Only high schools have grad rates, so I filter out the 
-       # other schools when this is the selected input. I only 
-       # do this filtering when selected to avoid filtering out
-       # schools for which other information is available when
-       # other characteristics are selected
+       # Only high schools have grad rates, so I filter out the other schools
+       # when this is the selected input. I only do this filtering when grad
+       # rates is selected to avoid filtering out schools for which other
+       # information is available when other characteristics are selected
        
        if (input$school == "grad_percent") {
          school_data <- school_data %>% 
@@ -464,7 +498,7 @@ server <- function(input, output) {
        }
       
        # A few districts (Medford, Sharon) don't have class size data
-       # so I filter out na rows from these districts
+       # so I filter out na rows from these districts.
        
        if (input$school == "avg_class_size") {
          school_data <- school_data %>% 
@@ -476,6 +510,10 @@ server <- function(input, output) {
          distinct() %>% 
          ggplot(aes_string(x = input$school, y = "percent_passing"))
      }
+     
+     # The salary data leads to long axis tick labels on the x axis, so I format
+     # with salary data rather than scientific notation and label the x axis
+     # with the nice name (rather than formatted name) of the axis chosen
     
      full_plot <- plot +
        geom_point() +
@@ -492,6 +530,10 @@ server <- function(input, output) {
      
      full_plot
    })
+   
+   # Below each plot is a description of the content, including pointing out
+   # interesting data points and explaining what may cause these apparant
+   # outliers.
    
    output$qualText <- renderText({
      spending_text <- paste("Per pupil spending is calculated for both ",
@@ -544,12 +586,16 @@ server <- function(input, output) {
    
    output$map <- renderLeaflet({
      
-     # To visualize MCAS performance, I need to merge my spatial dataset and
-     # my test score dataset. The spatial dataset contains more than just
-     # public schools. Only public schools have test data, so I chose to 
-     # remove schools without testing data from the data set I visualize. 
+     # To visualize MCAS performance, I need to merge my spatial dataset and my
+     # test score dataset. The spatial dataset contains more than just public
+     # schools. Only public schools have test data, so I chose to remove schools
+     # without testing data from the data set I visualize. When plotting each
+     # school, I set the color of the school marker to be the percent of
+     # students in that school who met or exceeded expectations on the 2018
+     # MCAS. In the label that appears when a marker is hovered is the name of
+     # the school and the actual percentage (rather than just color)
      
-     schools_transformed <- merge(schools_transformed,passing_percents, by="SCHID") %>% 
+     schools_transformed <- merge(schools_transformed, passing_percents, by="SCHID") %>% 
        subset(!is.na(percent_passing))
      passing_levels <- unique(schools_transformed@data$percent_passing)
      pal <- colorNumeric(palette = "BuPu",
@@ -567,6 +613,7 @@ server <- function(input, output) {
                  pal = pal,
                  values = c(0, 100),
                  title = "Students passing MCAS") %>% 
+       
        # It is easy on leaflet to zoom or move outside the 
        # interesting area. Setting the bounds around MA
        # prevents this from occuring.
