@@ -288,6 +288,7 @@ school_data <- all_test_data %>%
 # digits is the district code and the second 4 digits are a school level code. I
 # thus get the district code that's actually district representative, even
 # though it is stored as 8 digits - the last 4 are all 0s.
+
 district_data <- salaries %>% 
   left_join(spending) %>% 
   mutate(district_code = str_sub(district_code, 1, 4))
