@@ -39,4 +39,4 @@ is from the 2016-2017 school year, as this is the most recent available data.
 
 See the data for yourself [here](http://profiles.doe.mass.edu/state_report/).
 
-This project was developed for a class at Harvard University, Gov 1005: Data.
+This project was developed by Katherine Binney for a class at Harvard University, Gov 1005: Data.
